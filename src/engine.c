@@ -75,23 +75,23 @@ static char *test_bitboard_positions() {
 }
 
 static char *test_masks() {
-    mu_assert("Masked rank 3", bitboard_mask_rank(RANK_3) == 0xFF0000);
-    mu_assert("Masked file A", bitboard_mask_file(FILE_A) == 0x0101010101010101);
-    mu_assert("Masked file C", bitboard_mask_file(FILE_C) == 0x0404040404040404ULL);
-    mu_assert("Masked file H", bitboard_mask_file(FILE_H) == 0x8080808080808080ULL);
-    mu_assert("Masked cell A1", bitboard_mask_cell(FILE_A, RANK_1) == 0x1ULL);
-    mu_assert("Masked cell H1", bitboard_mask_cell(FILE_H, RANK_1) == 0x80ULL);
-    mu_assert("Masked cell A2", bitboard_mask_cell(FILE_A, RANK_2) == 0x100ULL);
-    mu_assert("Masked cell C3", bitboard_mask_cell(FILE_C, RANK_3) == 0x40000ULL);
-    mu_assert("Masked cell H8", bitboard_mask_cell(FILE_H, RANK_8) == 0x8000000000000000ULL);
+    mu_assert("Masked rank 3", _mask_rank(RANK_3) == 0xFF0000);
+    mu_assert("Masked file A", _mask_file(FILE_A) == 0x0101010101010101);
+    mu_assert("Masked file C", _mask_file(FILE_C) == 0x0404040404040404ULL);
+    mu_assert("Masked file H", _mask_file(FILE_H) == 0x8080808080808080ULL);
+    mu_assert("Masked cell A1", _mask_cell(FILE_A, RANK_1) == 0x1ULL);
+    mu_assert("Masked cell H1", _mask_cell(FILE_H, RANK_1) == 0x80ULL);
+    mu_assert("Masked cell A2", _mask_cell(FILE_A, RANK_2) == 0x100ULL);
+    mu_assert("Masked cell C3", _mask_cell(FILE_C, RANK_3) == 0x40000ULL);
+    mu_assert("Masked cell H8", _mask_cell(FILE_H, RANK_8) == 0x8000000000000000ULL);
     return 0;
 }
 
 static char *test_clears() {
-    mu_assert("Cleared rank 3", bitboard_clear_rank(RANK_3) == 0xFFFFFFFFFF00FFFFULL);
-    mu_assert("Cleared rank 4", bitboard_clear_rank(RANK_4) == 0xFFFFFFFF00FFFFFFULL);
-    mu_assert("Cleared file A", bitboard_clear_file(FILE_A) == 0xFEFEFEFEFEFEFEFEULL);
-    mu_assert("Cleared file H", bitboard_clear_file(FILE_H) == 0x7F7F7F7F7F7F7F7FULL);
+    mu_assert("Cleared rank 3", _clear_rank(RANK_3) == 0xFFFFFFFFFF00FFFFULL);
+    mu_assert("Cleared rank 4", _clear_rank(RANK_4) == 0xFFFFFFFF00FFFFFFULL);
+    mu_assert("Cleared file A", _clear_file(FILE_A) == 0xFEFEFEFEFEFEFEFEULL);
+    mu_assert("Cleared file H", _clear_file(FILE_H) == 0x7F7F7F7F7F7F7F7FULL);
     return 0;
 }
 

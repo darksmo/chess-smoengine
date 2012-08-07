@@ -1,7 +1,7 @@
 #ifndef BITBOARD_h
 #define BITBOARD_h
 
-typedef unsigned long long U64;
+#include "bitutils.h"
 
 typedef enum file_type_t {
     FILE_A,
@@ -61,12 +61,6 @@ Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element
 U64 bitboard_get_white_positions(Bitboard *b);
 U64 bitboard_get_black_positions(Bitboard *b);
 U64 bitboard_get_all_positions(Bitboard *b);
-
-U64 bitboard_clear_rank(RankType n);
-U64 bitboard_clear_file(FileType n);
-U64 bitboard_mask_rank(RankType n);
-U64 bitboard_mask_file(FileType n);
-U64 bitboard_mask_cell(FileType file, RankType rank);
 
 void destroy_bitboard(Bitboard *bitboard);
 void print_bitboard(Bitboard *b);

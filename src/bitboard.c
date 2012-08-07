@@ -4,6 +4,7 @@
 #include <string.h>
 #include <stdio.h>
 
+
 Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element_size, PieceType (*func_type_mapper)(void *))
 {
     Bitboard *b = malloc(sizeof(Bitboard));
@@ -101,26 +102,6 @@ U64 bitboard_get_all_positions(Bitboard *b)
     return bitboard_get_black_positions(b) | bitboard_get_white_positions(b);
 }
 
-U64 bitboard_mask_rank(RankType n)
-{
-    return 0xFFULL << 8 * n;
-}
-U64 bitboard_clear_file(FileType n)
-{
-    return ~bitboard_mask_file(n);
-}
-U64 bitboard_clear_rank(RankType n)
-{
-   return ~bitboard_mask_rank(n);
-}
-U64 bitboard_mask_file(FileType n)
-{
-   return 0x101010101010101ULL << n;
-}
-U64 bitboard_mask_cell(FileType file, RankType rank)
-{
-    return bitboard_mask_file(file) & bitboard_mask_rank(rank);
-}
 
 U64 get_piece_type(Bitboard *b, FileType file, RankType rank)
 {
@@ -130,14 +111,14 @@ U64 get_piece_type(Bitboard *b, FileType file, RankType rank)
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank) 
 {
     PieceType t = get_piece_type(b, file, rank);
-    U64 piece_pos = b->position[t] & bitboard_mask_cell(file, rank);
+    U64 piece_pos = b->position[t] & _mask_cell(file, rank);
     U64 result = 0ULL;            
 
     /* king */
-    U64 pclip_a = piece_pos & bitboard_clear_file(FILE_A);
-    U64 pclip_h = piece_pos & bitboard_clear_file(FILE_H);
-    U64 pclip_b = piece_pos & bitboard_clear_file(FILE_B);
-    U64 pclip_g = piece_pos & bitboard_clear_file(FILE_G);
+    U64 pclip_a = piece_pos & _clear_file(FILE_A);
+    U64 pclip_h = piece_pos & _clear_file(FILE_H);
+    U64 pclip_b = piece_pos & _clear_file(FILE_B);
+    U64 pclip_g = piece_pos & _clear_file(FILE_G);
 
     switch (t) {
         case WHITE_KING:
