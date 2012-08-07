@@ -135,6 +135,26 @@ static char *test_legal() {
     mu_assert("Knight moves ok 5", get_legal_moves(b, FILE_B, RANK_8) == 0x8050000000000ULL);
     destroy_bitboard(b);
 	
+    chessboard =
+    /* bit 56 */  ".R......" 
+    /* bit 48 */  ".r..Q..P"
+    /* bit 40 */  ".......p"
+    /* bit 32 */  "r....R.."
+    /* bit 24 */  "........" 
+    /* bit 16 */  "...R...."
+    /* bit  8 */  "..k....r" 
+    /* bit  0 */  "r.......";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    mu_assert("Pieces occupancy is right for rook test", bitboard_get_all_positions(b) == 0x292802100088401ULL);
+    mu_assert("Rook moves ok 1", get_legal_moves(b, FILE_A, RANK_1) == 0x10101feULL);
+    mu_assert("Rook moves ok 2", get_legal_moves(b, FILE_D, RANK_3) == 0x808080808f70808ULL);
+    mu_assert("Rook moves ok 3", get_legal_moves(b, FILE_F, RANK_5) == 0x202020df20202020ULL);
+    mu_assert("Rook moves ok 4", get_legal_moves(b, FILE_H, RANK_2) == 0x8080807880ULL);
+    mu_assert("Rook moves ok 5", get_legal_moves(b, FILE_B, RANK_7) == 0x21d020202020202ULL);
+    mu_assert("Rook moves ok 6", get_legal_moves(b, FILE_A, RANK_5) == 0x101013e01010100ULL);
+    
+    destroy_bitboard(b);
+	
     return 0;
 }
 

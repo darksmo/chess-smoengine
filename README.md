@@ -12,3 +12,4 @@ Features currently implemented:
 - basic, not yet optimised bitboard infrastructure to represent a chessboard
  * (incomplete) kings movements/attacks
  * knight movements/attacks
+ * rook movements/attacks

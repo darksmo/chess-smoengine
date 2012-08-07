@@ -99,7 +99,7 @@ U64 bitboard_get_black_positions(Bitboard *b)
 
 U64 bitboard_get_all_positions(Bitboard *b)
 {
-    return bitboard_get_black_positions(b) | bitboard_get_white_positions(b);
+    return (bitboard_get_black_positions(b) | bitboard_get_white_positions(b));
 }
 
 
@@ -114,11 +114,16 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
     U64 piece_pos = b->position[t] & _mask_cell(file, rank);
     U64 result = 0ULL;            
 
-    /* king */
+    /* king/knight */
     U64 pclip_a = piece_pos & _clear_file(FILE_A);
     U64 pclip_h = piece_pos & _clear_file(FILE_H);
     U64 pclip_b = piece_pos & _clear_file(FILE_B);
     U64 pclip_g = piece_pos & _clear_file(FILE_G);
+
+    /* rooks */
+    U64 occupancy = bitboard_get_all_positions(b);
+    U64 rook_file_mask = _mask_file(file) & ~piece_pos;
+    U64 rook_forward, rook_reverse;
 
     switch (t) {
         case WHITE_KING:
@@ -147,6 +152,24 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
                | (pclip_g & pclip_h) << 10
                | (pclip_a) << 15
                | (piece_pos) << 17;
+            break;
+        case WHITE_ROOK:
+        case BLACK_ROOK:
+            /* horizontal attacks */
+            result = _mask_rank(rank)
+                & ( (occupancy - (2 * piece_pos)) 
+                    ^ _mirror( _mirror(occupancy) - (2 * _mirror(piece_pos))) 
+                );
+
+            /* vertical attacks */
+            rook_forward = occupancy & rook_file_mask;
+            rook_reverse = BSWAP_64(rook_forward);
+            rook_forward -= (piece_pos); 
+            rook_reverse -= BSWAP_64(piece_pos);
+            rook_forward ^= BSWAP_64(rook_reverse);
+            result |= rook_forward & rook_file_mask;
+
+            //result &= (rook_file_mask | _mask_rank(rank));
             break;
     }
     
