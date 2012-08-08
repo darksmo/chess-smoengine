@@ -23,4 +23,7 @@ U64 _mask_file(unsigned int n);
 U64 _mask_cell(unsigned int file, unsigned int rank);
 U64 _mirror(U64 bit);
 
+U64 _mask_diag(unsigned int n);
+U64 _mask_antidiag(unsigned int n);
+
 #endif

@@ -3,6 +3,9 @@
 
 #include "bitutils.h"
 
+#define DIAGONAL(r,f) ((r-f) & 15)
+#define ANTI_DIAGONAL(r,f) ((r+f) ^ 7)
+
 typedef enum file_type_t {
     FILE_A,
     FILE_B,

@@ -108,6 +108,43 @@ U64 get_piece_type(Bitboard *b, FileType file, RankType rank)
     return b->piece_type[rank * 8 + file];
 }
 
+U64 get_rook_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) 
+{
+    U64 occupancy = bitboard_get_all_positions(b);
+    U64 rook_file_mask = _mask_file(file) & ~piece_pos;
+
+    /* horizontal attacks */
+    U64 result = _mask_rank(rank)
+        & ( (occupancy - (2 * piece_pos)) 
+            ^ _mirror( _mirror(occupancy) - (2 * _mirror(piece_pos))) 
+        );
+
+    /* vertical attacks */
+    U64 rook_forward = occupancy & rook_file_mask;
+    U64 rook_reverse = BSWAP_64(rook_forward);
+    rook_forward -= (piece_pos); 
+    rook_reverse -= BSWAP_64(piece_pos);
+    rook_forward ^= BSWAP_64(rook_reverse);
+
+    return result | rook_forward & rook_file_mask;
+}
+
+U64 get_bishop_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) 
+{
+    U64 occupancy = bitboard_get_all_positions(b);
+    U64 bishop_diagonal_mask = _mask_diag(DIAGONAL(rank, file)) & ~piece_pos; 
+    U64 bishop_antidiagonal_mask = bishop_diagonal_mask | _mask_antidiag(ANTI_DIAGONAL(rank, file)) & ~piece_pos;
+    U64 bishop_forward, bishop_reverse;
+            
+    bishop_forward = occupancy & bishop_antidiagonal_mask;
+    bishop_reverse = BSWAP_64(bishop_forward);
+    bishop_forward -= (piece_pos); 
+    bishop_reverse -= BSWAP_64(piece_pos);
+    bishop_forward ^= BSWAP_64(bishop_reverse);
+
+    return bishop_forward & bishop_antidiagonal_mask;
+}
+
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank) 
 {
     PieceType t = get_piece_type(b, file, rank);
@@ -119,11 +156,6 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
     U64 pclip_h = piece_pos & _clear_file(FILE_H);
     U64 pclip_b = piece_pos & _clear_file(FILE_B);
     U64 pclip_g = piece_pos & _clear_file(FILE_G);
-
-    /* rooks */
-    U64 occupancy = bitboard_get_all_positions(b);
-    U64 rook_file_mask = _mask_file(file) & ~piece_pos;
-    U64 rook_forward, rook_reverse;
 
     switch (t) {
         case WHITE_KING:
@@ -141,10 +173,10 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
                | (piece_pos << 8)
                | (piece_pos >> 8);
             break;
+
         case WHITE_KNIGHT:
         case BLACK_KNIGHT:
-            result = 
-                 (pclip_g & pclip_h) >> 6
+            result = (pclip_g & pclip_h) >> 6
                | (pclip_b & pclip_a) >> 10
                | (pclip_h) >> 15
                | (pclip_a) >> 17
@@ -153,26 +185,25 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
                | (pclip_a) << 15
                | (piece_pos) << 17;
             break;
+
         case WHITE_ROOK:
         case BLACK_ROOK:
-            /* horizontal attacks */
-            result = _mask_rank(rank)
-                & ( (occupancy - (2 * piece_pos)) 
-                    ^ _mirror( _mirror(occupancy) - (2 * _mirror(piece_pos))) 
-                );
+            result = get_rook_attacks(b, file, rank, piece_pos);
+            break;
 
-            /* vertical attacks */
-            rook_forward = occupancy & rook_file_mask;
-            rook_reverse = BSWAP_64(rook_forward);
-            rook_forward -= (piece_pos); 
-            rook_reverse -= BSWAP_64(piece_pos);
-            rook_forward ^= BSWAP_64(rook_reverse);
-            result |= rook_forward & rook_file_mask;
+        case WHITE_BISHOP:
+        case BLACK_BISHOP:
+            result = get_bishop_attacks(b, file, rank, piece_pos);
+            break;
 
-            //result &= (rook_file_mask | _mask_rank(rank));
+        case WHITE_QUEEN:
+        case BLACK_QUEEN:
+            result = get_bishop_attacks(b, file, rank, piece_pos) 
+                | get_rook_attacks(b, file, rank, piece_pos);
             break;
     }
     
+    /* reset own color bits */
     if (piece_pos & bitboard_get_white_positions(b))
         result &= ~bitboard_get_white_positions(b);
     else

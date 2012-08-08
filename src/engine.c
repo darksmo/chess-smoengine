@@ -153,6 +153,34 @@ static char *test_legal() {
     mu_assert("Rook moves ok 5", get_legal_moves(b, FILE_B, RANK_7) == 0x21d020202020202ULL);
     mu_assert("Rook moves ok 6", get_legal_moves(b, FILE_A, RANK_5) == 0x101013e01010100ULL);
     
+    chessboard =
+    /* bit 56 */  "........" 
+    /* bit 48 */  "..b....."
+    /* bit 40 */  "........"
+    /* bit 32 */  "....P.P."
+    /* bit 24 */  "........" 
+    /* bit 16 */  "........"
+    /* bit  8 */  "...B...." 
+    /* bit  0 */  ".......b";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    mu_assert("Bishop moves ok 1", get_legal_moves(b, FILE_C, RANK_7) == 0xa000a1100000000ULL);
+    mu_assert("Bishop moves ok 2", get_legal_moves(b, FILE_D, RANK_2) == 0x122140014ULL);
+    mu_assert("Bishop moves ok 2", get_legal_moves(b, FILE_H, RANK_1) == 0x102040810204000ULL);
+    
+    chessboard =
+    /* bit 56 */  "........" 
+    /* bit 48 */  "..q....."
+    /* bit 40 */  "........"
+    /* bit 32 */  "....P.P."
+    /* bit 24 */  "........" 
+    /* bit 16 */  "........"
+    /* bit  8 */  "...Q...." 
+    /* bit  0 */  ".......q";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    mu_assert("Queen moves ok 1", get_legal_moves(b, FILE_C, RANK_7) == 0xefb0e1504040404ULL);
+    mu_assert("Queen moves ok 2", get_legal_moves(b, FILE_D, RANK_2) == 0x80808092a1cf71cULL);
+    mu_assert("Queen moves ok 3", get_legal_moves(b, FILE_H, RANK_1) == 0x8182848890a0c07fULL);
+    
     destroy_bitboard(b);
 	
     return 0;

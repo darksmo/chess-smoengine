@@ -9,7 +9,9 @@ interface that can be easily integrated in your own C chess program.
 Features currently implemented:
 - simple tests for bitboards, placement of pieces
 - create bitboards out of your own representation of a chessboard
-- basic, not yet optimised bitboard infrastructure to represent a chessboard
+- not yet optimised bitboard infrastructure to represent a chessboard
  * (incomplete) kings movements/attacks
  * knight movements/attacks
  * rook movements/attacks
+ * bishop movements/attacks
+ * queen movements/attacks
