@@ -3,7 +3,7 @@ LDFLAGS = $(INC)
 CC = gcc
 
 main: clean
-	$(CC) -g src/*.c $(LDFLAGS) -o engine
+	mkdir build 2>/dev/null && $(CC) src/test/bitboards.c src/*.h src/*.c $(LDFLAGS) -o ./build/test_bitboards
 
 clean:
-	rm -rf engine
+	rm -rf build
