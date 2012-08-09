@@ -9,8 +9,8 @@ interface that can be easily integrated in your own C chess program.
 Features currently implemented:
 - tests for bitboards, placement of pieces, legal moves
 - create bitboards out of your own representation of a chessboard
-- initial structure for a test of legal moves, which checks if moves from real
-  games are considered legal
+- more complete structure for a test of legal moves, which checks if moves from
+  real games are considered legal
 - not yet optimised bitboard infrastructure to represent a chessboard:
  * (incomplete) kings movements/attacks
  * knight movements/attacks
