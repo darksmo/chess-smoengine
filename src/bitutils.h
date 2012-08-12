@@ -14,6 +14,8 @@
         (((U64)(x) >> 40) & 0xff00ULL) | \
         ((U64)(x)  >> 56))
 
+#define LS1B(x) ((x)&(-x))
+
 typedef unsigned long long U64;
 
 U64 _clear_file(unsigned int n);

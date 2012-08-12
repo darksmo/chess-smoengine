@@ -4,28 +4,64 @@
 #include <string.h>
 #include <stdio.h>
 
+Bitboard *create_blank_bitboard()
+{
+    Bitboard *b = malloc(sizeof(Bitboard));
+    bzero(b, sizeof(Bitboard));
+    return b;
+}
+
+Bitboard *clone_bitboard(Bitboard *b)
+{
+    Bitboard * new_b = create_blank_bitboard();
+    memcpy(new_b, b, sizeof(Bitboard));
+    return new_b; 
+}
 
 Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element_size, PieceType (*func_type_mapper)(void *))
 {
-    Bitboard *b = malloc(sizeof(Bitboard));
-    char *c = (char*) chessboard_base;
-    bzero(b, sizeof(Bitboard));
+    Bitboard *b = create_blank_bitboard();
+    
+    /* All back and white pawns can move by two in the beginning */
+    b->white_remaining_pawns_longsteps = _mask_rank(RANK_2);
+    b->black_remaining_pawns_longsteps = _mask_rank(RANK_7);
+    b->white_castling_rights = 0x0ULL;
+    b->black_castling_rights = 0x0ULL;
+    b->enpassant_rights = 0x0ULL;
 
     /* create the initial bitboard */
-    int r,i,cell;
+    char *c = (char*) chessboard_base;
+    int r, i, cell;
     cell = 0;
     for (r=0; r<64; r+=8) {
         for (i=r+7; i >= r; i--) {
             PieceType t = (*func_type_mapper)(chessboard_base + chessboard_element_size * i);
 
-            if (t != PIECE_NONE)
-                b->position[t] = b->position[t] | 1ULL << 63 - cell;
-                b->piece_type[63 - cell] = t;
+            int internal_cell = 63 - cell;
+            if (t != PIECE_NONE) {
+
+                if (WHITE_KING == t && internal_cell == _CELL_WHITE_KING_HOME) {
+                    b->white_castling_rights = 0x44ULL;
+                }
+                else if (BLACK_KING == t && internal_cell == _CELL_BLACK_KING_HOME) {
+                    b->black_castling_rights = 0x4400000000000000ULL;
+                }
+
+                /* place the piece in the positional bitboard */
+                b->position[t] = b->position[t] | 1ULL << internal_cell;
+            }
+            b->piece_type[internal_cell] = t;
 
             cell++;
         }
     }
-    
+
+    /* clear castling rights if rooks are not in place */
+    if (WHITE_ROOK != b->piece_type[0]) b->white_castling_rights &= ~0x4ULL;
+    if (WHITE_ROOK != b->piece_type[7]) b->white_castling_rights &= ~0x40ULL;
+    if (BLACK_ROOK != b->piece_type[56]) b->black_castling_rights &= ~0x400000000000000ULL;
+    if (BLACK_ROOK != b->piece_type[63]) b->black_castling_rights &= ~0x4000000000000000ULL;
+
     /* return it */
     return b;
 }
@@ -35,7 +71,7 @@ void destroy_bitboard(Bitboard *bitboard)
 	free(bitboard);
 }
 
-void print_bitboard(Bitboard *b)
+char *bitboard_piece_name(PieceType t)
 {
     char *piece_type_name[] = {
         "WHITE PAWN",
@@ -51,20 +87,60 @@ void print_bitboard(Bitboard *b)
         "BLACK QUEEN",
         "BLACK KING"
     };
+    return piece_type_name[t];
+}
 
+void print_chessboard(Bitboard *b)
+{
+    char piece_repr[] = {
+        'P',
+        'N',
+        'B',
+        'R',
+        'Q',
+        'K',
+        'p',
+        'n',
+        'b',
+        'r',
+        'q',
+        'k',
+        '@',
+        '-'
+    };
+    int row;
+    int col;
+    int cell;
+    PieceType t;
+    for (row=7; row>=0; row--) {
+        for (col=0; col<8; col++) {
+            cell = CELL(row, col);
+            t = b->piece_type[cell];
+            printf(" %c", piece_repr[t]); 
+        }
+        printf("\n");
+    }
+}
+
+void print_bitboard(Bitboard *b)
+{
     int i;
     printf(" - - - position bitboards - - - \n");
-    for (i=0; i<PIECE_COUNT; i++) {
-        printf("%s) %llu\n", piece_type_name[i], b->position[i]);
+    for (i=0; i<PIECE_TYPE_COUNT; i++) {
+        printf("%s)\n", bitboard_piece_name(i));
+        print_bits(b->position[i]);
     }
 }
 
 void print_bits(U64 bits)
 {
     U64 bits_w = bits;
+    char rank = 'A';
+    char file = '8';
     int nbits = 64;
     while(nbits) {
         nbits-=8;
+        printf("%c ", file--);
         printf("%c ", 0x100000000000000ULL  & bits_w ? '1' : '-');
         printf("%c ", 0x200000000000000ULL  & bits_w ? '1' : '-');
         printf("%c ", 0x400000000000000ULL  & bits_w ? '1' : '-');
@@ -75,6 +151,11 @@ void print_bits(U64 bits)
         printf("%c ", 0x8000000000000000ULL & bits_w ? '1' : '-');
         bits_w <<= 8;
         printf ("\n");
+    }
+    int i;
+    printf(" ");
+    for (i=0; i<8; i++) {
+        printf(" %c", rank++);
     }
     printf("\n");
 }
@@ -103,9 +184,9 @@ U64 bitboard_get_all_positions(Bitboard *b)
 }
 
 
-U64 get_piece_type(Bitboard *b, FileType file, RankType rank)
+PieceType get_piece_type(Bitboard *b, FileType file, RankType rank)
 {
-    return b->piece_type[rank * 8 + file];
+    return b->piece_type[CELL(rank,file)];
 }
 
 U64 get_rook_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) 
@@ -133,16 +214,26 @@ U64 get_bishop_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos)
 {
     U64 occupancy = bitboard_get_all_positions(b);
     U64 bishop_diagonal_mask = _mask_diag(DIAGONAL(rank, file)) & ~piece_pos; 
-    U64 bishop_antidiagonal_mask = bishop_diagonal_mask | _mask_antidiag(ANTI_DIAGONAL(rank, file)) & ~piece_pos;
+    U64 bishop_antidiagonal_mask = _mask_antidiag(ANTI_DIAGONAL(rank, file)) & ~piece_pos;
+
     U64 bishop_forward, bishop_reverse;
-            
+    U64 result;
+    bishop_forward = occupancy & bishop_diagonal_mask;
+    bishop_reverse = BSWAP_64(bishop_forward);
+    bishop_forward -= (piece_pos); 
+    bishop_reverse -= BSWAP_64(piece_pos);
+    bishop_forward ^= BSWAP_64(bishop_reverse);
+    result = bishop_forward & bishop_diagonal_mask;
+    
     bishop_forward = occupancy & bishop_antidiagonal_mask;
     bishop_reverse = BSWAP_64(bishop_forward);
     bishop_forward -= (piece_pos); 
     bishop_reverse -= BSWAP_64(piece_pos);
     bishop_forward ^= BSWAP_64(bishop_reverse);
+    result |= (bishop_forward & bishop_antidiagonal_mask);
+    
 
-    return bishop_forward & bishop_antidiagonal_mask;
+    return result;
 }
 
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank) 
@@ -157,13 +248,35 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
     U64 pclip_b = piece_pos & _clear_file(FILE_B);
     U64 pclip_g = piece_pos & _clear_file(FILE_G);
 
+    U64 pawn_attacks_mask;
+
     switch (t) {
+        case WHITE_PAWN:
+            /* pawn attacks */
+            pawn_attacks_mask = (pclip_a << 7) | (pclip_h << 9);
+            pawn_attacks_mask &= (bitboard_get_black_positions(b) | b->enpassant_rights);
+            
+            /* pawn movements */
+            result =( (piece_pos << 8) 
+                    | ((b->white_remaining_pawns_longsteps & piece_pos) << 16)
+                ) & (~bitboard_get_black_positions(b));
+
+            result |= pawn_attacks_mask;
+            break;
+        case BLACK_PAWN:
+            /* pawn attacks */
+            pawn_attacks_mask = (pclip_h >> 7) | (pclip_a >> 9) | b->enpassant_rights;
+            pawn_attacks_mask &= bitboard_get_white_positions(b);
+            
+            /* pawn movements */
+            result =( (piece_pos >> 8) 
+                    | ((b->black_remaining_pawns_longsteps & piece_pos) >> 16)
+                ) & (~bitboard_get_white_positions(b));
+
+            result |= pawn_attacks_mask;
+            break;
+
         case WHITE_KING:
-        case BLACK_KING:
-            /* 
-             * TODO: the king cannot move on squares checked by the pieces
-             * of the oppsite color! 
-             */
             result = (pclip_a >> 1) 
                | (pclip_a >> 9)
                | (pclip_a << 7)
@@ -171,7 +284,19 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
                | (pclip_h << 9)
                | (pclip_h >> 7)
                | (piece_pos << 8)
-               | (piece_pos >> 8);
+               | (piece_pos >> 8)
+               | b->white_castling_rights;
+            break;
+        case BLACK_KING:
+            result = (pclip_a >> 1) 
+               | (pclip_a >> 9)
+               | (pclip_a << 7)
+               | (pclip_h << 1)
+               | (pclip_h << 9)
+               | (pclip_h >> 7)
+               | (piece_pos << 8)
+               | (piece_pos >> 8)
+               | b->black_castling_rights;
             break;
 
         case WHITE_KNIGHT:
@@ -209,7 +334,163 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
     else
         result &= ~bitboard_get_black_positions(b);
 
-    printf("Piece type: %d FILE: %d RANK: %d : 0x%llxULL\n", t, file, rank, result);
+    printf("%s %d (in file:%d rank: %d) possible moves:\n", bitboard_piece_name(t), t, file, rank);
     print_bits(result);
+    printf("In hex: 0x%llxLLU\n\n", result);
     return result;
+}
+
+int is_legal_move(Bitboard *b, Move *m)
+{
+    U64 legal_moves = get_legal_moves(b, m->from_file, m->from_rank);
+    return !!(legal_moves & _mask_cell(m->to_file, m->to_rank));
+}
+
+void _perform_piece_move(Bitboard *b, Move *m)
+{
+    PieceType t = get_piece_type(b, m->from_file, m->from_rank);
+    PieceType ttarget = get_piece_type(b, m->to_file, m->to_rank);
+
+    /* move to position */
+    b->position[t] &= (~_mask_cell(m->from_file, m->from_rank));
+    b->position[t] |= (_mask_cell(m->to_file, m->to_rank));
+
+    /* the piece type may be empty for example for en-passant captures */
+    if (t != PIECE_NONE) {
+        b->position[ttarget] &= (~_mask_cell(m->to_file, m->to_rank));
+    }
+
+    /* update_piece_type_mapping */
+    b->piece_type[CELL(m->from_rank, m->from_file)] = PIECE_NONE;
+    b->piece_type[CELL(m->to_rank, m->to_file)] = t;
+}
+
+void bitboard_do_move(Bitboard *b, Move *m)
+{
+    Move rook_move;
+    PieceType t = get_piece_type(b, m->from_file, m->from_rank);
+    PieceType ttarget = get_piece_type(b, m->to_file, m->to_rank);
+    int cell_target = CELL(m->to_rank, m->to_file);
+    printf("C: %d\n", cell_target);
+
+    U64 piece_pos = b->position[t] & _mask_cell(m->from_file, m->from_rank);
+    U64 target_piece_pos = b->position[ttarget] & _mask_cell(m->to_file, m->to_rank);
+    U64 longsteps_old;
+
+    /* clear enpassant chances (they'll be set later if necessary) */
+    b->enpassant_rights = 0x0ULL;
+
+    switch (t) {
+        case WHITE_PAWN:
+            longsteps_old = b->white_remaining_pawns_longsteps;
+
+            /* clear available longsteps for the pawn of this color */
+            b->white_remaining_pawns_longsteps &= ~piece_pos;
+
+            if (longsteps_old != b->white_remaining_pawns_longsteps) {
+                /* 
+                 * This pawn may have moved of two positions! enable enpassant
+                 * chances by turning on the en-passant bit as if the pawn moved of one
+                 * position.
+                 */ 
+                b->enpassant_rights = piece_pos << 8;
+            }
+            
+            /* 
+             * If this pawn moved diagonally, and the target square is empty,
+             * it was an en-passant capture! 
+             */
+            if (m->to_file != m->from_file && ttarget == PIECE_NONE) {
+                /* Clear out captured pawn behind the target*/
+                b->position[BLACK_PAWN] &= ~(_mask_cell(m->to_file, m->to_rank-1));
+                b->piece_type[cell_target - 8] = PIECE_NONE;
+            }
+            
+            break;
+        case BLACK_PAWN:
+            longsteps_old = b->white_remaining_pawns_longsteps;
+
+            /* clear available longsteps for the pawn of this color */
+            b->black_remaining_pawns_longsteps &= ~piece_pos;
+
+            if (longsteps_old != b->black_remaining_pawns_longsteps) {
+                /* enable enpassant chances (see comment for white). */ 
+                b->enpassant_rights = piece_pos >> 8;
+            }
+            
+            if (m->to_file != m->from_file && ttarget == PIECE_NONE) {
+                /* Clear out captured pawn behind the target*/
+                b->position[BLACK_PAWN] &= ~(_mask_cell(m->to_file, m->to_rank + 1));
+                b->piece_type[cell_target + 8] = PIECE_NONE;
+            }
+            break;
+        case WHITE_KING:
+            b->white_castling_rights = 0x0ULL;
+
+            /* 
+             * The followings are to move the rook next to the king in case of
+             * castling.
+             */
+            if (_CELL_WHITE_KING_LEFTCASTLE == cell_target) {
+                rook_move.from_file = FILE_A; 
+                rook_move.from_rank = RANK_1;
+                rook_move.to_file =   FILE_D;
+                rook_move.to_rank =   RANK_1;
+                _perform_piece_move(b, &rook_move);
+            }
+            else if (_CELL_WHITE_KING_RIGHTCASTLE == cell_target) {
+                rook_move.from_file = FILE_H; 
+                rook_move.from_rank = RANK_1;
+                rook_move.to_file =   FILE_F;
+                rook_move.to_rank =   RANK_1;
+                _perform_piece_move(b, &rook_move);
+            }
+            break;
+
+        case BLACK_KING:
+            b->black_castling_rights = 0x0ULL;
+
+            /* 
+             * The followings are to move the rook next to the king in case of
+             * castling.
+             */
+            if (_CELL_BLACK_KING_LEFTCASTLE == cell_target) {
+                rook_move.from_file = FILE_A; 
+                rook_move.from_rank = RANK_8;
+                rook_move.to_file =   FILE_D;
+                rook_move.to_rank =   RANK_8;
+                _perform_piece_move(b, &rook_move);
+            }
+            else if (_CELL_BLACK_KING_RIGHTCASTLE == cell_target) {
+                rook_move.from_file = FILE_H; 
+                rook_move.from_rank = RANK_8;
+                rook_move.to_file =   FILE_F;
+                rook_move.to_rank =   RANK_8;
+                _perform_piece_move(b, &rook_move);
+            }
+            break;
+        case BLACK_ROOK:
+            if (m->from_file == FILE_A && m->from_rank == RANK_8) {
+                /* clear left castling */
+                b->black_castling_rights &= (~_mask_cell(FILE_C, RANK_8));
+            }
+            else if (m->from_file == FILE_H && m->from_rank == RANK_8) {
+                /* clear right castling */
+                b->black_castling_rights &= (~_mask_cell(FILE_G, RANK_8));
+            }
+            break;
+        case WHITE_ROOK:
+            if (m->from_file == FILE_A && m->from_rank == RANK_1) {
+                /* clear left castling */
+                b->white_castling_rights &= (~_mask_cell(FILE_C, RANK_1));
+            }
+            else if (m->from_file == FILE_H && m->from_rank == RANK_1) {
+                /* clear right castling */
+                b->white_castling_rights &= (~_mask_cell(FILE_G, RANK_1));
+            }
+            break;
+    }
+
+    _perform_piece_move(b, m);
+
 }

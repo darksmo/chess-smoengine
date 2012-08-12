@@ -94,6 +94,7 @@ static char *test_clears() {
 }
 
 static char *test_legal() {
+    Move m; 
     Bitboard *b = create_test_bitboard();
     mu_assert("King cannot move", get_legal_moves(b, FILE_E, RANK_1) == 0ULL);
     destroy_bitboard(b);
@@ -115,6 +116,53 @@ static char *test_legal() {
     mu_assert("King moves ok 5", get_legal_moves(b, FILE_A, RANK_8) == 0x203000000000000ULL);
     mu_assert("King moves ok 6", get_legal_moves(b, FILE_H, RANK_8) == 0x40C0000000000000ULL);
     destroy_bitboard(b);
+
+	
+    /* king looses castling rights */
+    chessboard =
+    /* bit 56 */  "r...k..r" 
+    /* bit 48 */  "........"
+    /* bit 40 */  "........"
+    /* bit 32 */  "........"
+    /* bit 24 */  "........" 
+    /* bit 16 */  "........"
+    /* bit  8 */  "........" 
+    /* bit  0 */  "........";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    mu_assert("King may casle correctly 1", get_legal_moves(b, FILE_E, RANK_8) == 0x6c38000000000000LLU);
+    m.from_file = FILE_A; 
+    m.from_rank = RANK_8; 
+    m.to_file = FILE_A;
+    m.to_rank = RANK_1;
+    bitboard_do_move(b, &m);
+    mu_assert("King still castles right", get_legal_moves(b, FILE_E, RANK_8) == 0x6838000000000000LLU);
+    m.from_file = FILE_H; 
+    m.from_rank = RANK_8; 
+    m.to_file = FILE_H;
+    m.to_rank = RANK_7;
+    bitboard_do_move(b, &m);
+    mu_assert("King cannot castle", get_legal_moves(b, FILE_E, RANK_8) == 0x2838000000000000LLU);
+    destroy_bitboard(b);
+    
+    /* king castles correctly */
+    chessboard =
+    /* bit 56 */  "r...k..r" 
+    /* bit 48 */  "........"
+    /* bit 40 */  "........"
+    /* bit 32 */  "........"
+    /* bit 24 */  "........" 
+    /* bit 16 */  "........"
+    /* bit  8 */  "........" 
+    /* bit  0 */  "........";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    m.from_file = FILE_E;
+    m.from_rank = RANK_8;
+    m.to_file = FILE_C;
+    m.to_rank = RANK_8;
+    bitboard_do_move(b, &m);
+    print_chessboard(b);
+    mu_assert("Found rook in the expected place", BLACK_ROOK == get_piece_type(b, FILE_D, RANK_8));
+    mu_assert("Found king in the expected place", BLACK_KING == get_piece_type(b, FILE_C, RANK_8));
     
 	chessboard =
     /* bit 56 */  ".n......" 
@@ -150,6 +198,7 @@ static char *test_legal() {
     mu_assert("Rook moves ok 4", get_legal_moves(b, FILE_H, RANK_2) == 0x8080807880ULL);
     mu_assert("Rook moves ok 5", get_legal_moves(b, FILE_B, RANK_7) == 0x21d020202020202ULL);
     mu_assert("Rook moves ok 6", get_legal_moves(b, FILE_A, RANK_5) == 0x101013e01010100ULL);
+    destroy_bitboard(b);
     
     chessboard =
     /* bit 56 */  "........" 
@@ -163,8 +212,22 @@ static char *test_legal() {
 	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
     mu_assert("Bishop moves ok 1", get_legal_moves(b, FILE_C, RANK_7) == 0xa000a1100000000ULL);
     mu_assert("Bishop moves ok 2", get_legal_moves(b, FILE_D, RANK_2) == 0x122140014ULL);
-    mu_assert("Bishop moves ok 2", get_legal_moves(b, FILE_H, RANK_1) == 0x102040810204000ULL);
-    
+    mu_assert("Bishop moves ok 3", get_legal_moves(b, FILE_H, RANK_1) == 0x102040810204000ULL);
+    destroy_bitboard(b);
+
+    chessboard =
+    "r.bqkb.r"
+    "pp.n..pp"
+    "..n.pp.."
+    "...pP..."
+    "...P.P.."
+    ".....N.."
+    "PP....PP"
+    "R.BQKBNR";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    mu_assert("Bishop moves ok 4", get_legal_moves(b, FILE_F, RANK_1) == 0x10204081000LLU);
+    destroy_bitboard(b);
+
     chessboard =
     /* bit 56 */  "........" 
     /* bit 48 */  "..q....."
@@ -178,8 +241,89 @@ static char *test_legal() {
     mu_assert("Queen moves ok 1", get_legal_moves(b, FILE_C, RANK_7) == 0xefb0e1504040404ULL);
     mu_assert("Queen moves ok 2", get_legal_moves(b, FILE_D, RANK_2) == 0x80808092a1cf71cULL);
     mu_assert("Queen moves ok 3", get_legal_moves(b, FILE_H, RANK_1) == 0x8182848890a0c07fULL);
-    
     destroy_bitboard(b);
+    
+    chessboard =
+    /* bit 56 */  "........" 
+    /* bit 48 */  ".p......"
+    /* bit 40 */  "....P..."
+    /* bit 32 */  ".......p"
+    /* bit 24 */  "......PP" 
+    /* bit 16 */  "...p...."
+    /* bit  8 */  "....P..." 
+    /* bit  0 */  "........";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    mu_assert("Pawn moves ok 1", get_legal_moves(b, FILE_E, RANK_2) == 0x10180000LLU);
+    mu_assert("Pawn moves ok 2", get_legal_moves(b, FILE_E, RANK_6) == 0x10000000000000LLU);
+    mu_assert("Pawn moves ok 3", get_legal_moves(b, FILE_B, RANK_7) == 0x20200000000LLU);
+    mu_assert("Pawn moves ok 4", get_legal_moves(b, FILE_H, RANK_5) == 0x40000000LLU);
+
+    /* Queen aiming at a queen of the opposite color */
+    chessboard =
+    /* bit 56 */  "...r.rk."
+    /* bit 48 */  ".p.....p"
+    /* bit 40 */  "p.p.bpp."
+    /* bit 32 */  "....qP.."
+    /* bit 24 */  "....P..."
+    /* bit 16 */  ".P..N..."
+    /* bit  8 */  "PQ.R..PP"
+    /* bit  0 */  "....R.K.";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    mu_assert("Black queen moves ok", get_legal_moves(b, FILE_E, RANK_5) == 0x204082f38448200LLU);
+
+    /* en-passant */
+    chessboard =
+    /* bit 56 */  "........"
+    /* bit 48 */  "p...p..."
+    /* bit 40 */  "........"
+    /* bit 32 */  "........"
+    /* bit 24 */  "........"
+    /* bit 16 */  "........"
+    /* bit  8 */  "...P...."
+    /* bit  0 */  "........";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+    m.from_file = FILE_D;  /* d2-d4 */
+    m.from_rank = RANK_2;
+    m.to_file = FILE_D;
+    m.to_rank = RANK_4;
+    bitboard_do_move(b, &m);
+    
+    m.from_file = FILE_A; /* a7-a6 */
+    m.from_rank = RANK_7;
+    m.to_file = FILE_A;
+    m.to_rank = RANK_6;
+    bitboard_do_move(b, &m);
+    
+    m.from_file = FILE_D; /* d4-d5 */
+    m.from_rank = RANK_4;
+    m.to_file = FILE_D;
+    m.to_rank = RANK_5;
+    bitboard_do_move(b, &m);
+    print_chessboard(b);
+    
+    m.from_file = FILE_E; /* e7-e5 */
+    m.from_rank = RANK_7;
+    m.to_file = FILE_E;
+    m.to_rank = RANK_5;
+    bitboard_do_move(b, &m);
+    
+    m.from_file = FILE_D; /* d5-e6 */
+    m.from_rank = RANK_5;
+    m.to_file = FILE_E;
+    m.to_rank = RANK_6;
+    mu_assert("En-passant capture works as expected", is_legal_move(b, &m));
+    bitboard_do_move(b, &m);
+
+    print_bitboard(b);
+    print_chessboard(b);
+
+    destroy_bitboard(b);
+
+
+    unsigned int ii=0;
+    for (ii=0; ii<=15; ii++) {
+        print_bits(_mask_antidiag(ii));
+    }
 	
     return 0;
 }

@@ -60,11 +60,12 @@ ParserLookFor state = READ_MOVE_NUMBER;
 
 void new_game() 
 {
-    printf("Creating new chessboard\n");
     if (chessboard) {
         destroy_bitboard(chessboard);
     }
     chessboard = create_default_chessboard();
+    printf("Created Chessboard\n");
+    print_chessboard(chessboard);
 }
 
  /* TODO: 
@@ -73,12 +74,22 @@ void new_game()
   */
 int do_move(Move *m)
 {
-    printf("Doing move: %c%c - %c%c\n",
-        m->from_file + 97, m->from_rank + 48,
-        m->to_file + 97, m->to_rank + 48
+    printf("Move %c%c - %c%c ",
+        m->from_file + 97, m->from_rank + 49,
+        m->to_file + 97, m->to_rank + 49
     );
-
-    return 1;
+    if (is_legal_move(chessboard, m)) {
+        printf("OK\n");
+        bitboard_do_move(chessboard, m);
+        print_chessboard(chessboard);
+        return 1;
+    }
+    printf("NOT LEGAL!\n");
+    printf("The current chessboard looks like:\n");
+    print_chessboard(chessboard);
+    printf("The current bitboard looks like:\n");
+    print_bitboard(chessboard);
+    return 0;
 }
 
 void end_game()
@@ -180,7 +191,7 @@ int main(int argc, char **argv) {
                                 break;
                             case READ_FIRST_RANK: 
                             case READ_THIRD_RANK:
-                                move.from_rank = ch - 48;
+                                move.from_rank = ch - 49;
                                 break;
                             case READ_SECOND_FILE:
                             case READ_FOURTH_FILE:
@@ -188,7 +199,7 @@ int main(int argc, char **argv) {
                                 break;
                             case READ_SECOND_RANK:
                             case READ_FOURTH_RANK:
-                                move.to_rank = ch - 48;
+                                move.to_rank = ch - 49;
                                 all_legal_moves_so_far = do_move(&move);
                                 break;
                         }
