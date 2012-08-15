@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "minunit.h"
 
-#include "../bitboard.h"
+#include "bitboard.h"
 
 
 /* - - - - - - -  Tests for bitboards - - - - - - - - */
@@ -51,7 +51,8 @@ static Bitboard *create_test_bitboard() {
         "........"
         "PPPPPPPP"
         "RNBQKBNR";
-	Bitboard *b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	Bitboard *b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
+    print_chessboard(b);
     return b;
 }
 
@@ -108,7 +109,7 @@ static char *test_legal() {
     /* bit 16 */  "........"
     /* bit  8 */  ".k......" 
     /* bit  0 */  "K......k";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("King moves ok 1", get_legal_moves(b, FILE_D, RANK_5) == 0x1C141C000000ULL);
     // mu_assert("King moves ok 2", get_legal_moves(b, FILE_B, RANK_2) == 0x70404ULL);
     mu_assert("King moves ok 3", get_legal_moves(b, FILE_H, RANK_1) == 0xC040ULL);
@@ -128,7 +129,7 @@ static char *test_legal() {
     /* bit 16 */  "........"
     /* bit  8 */  "........" 
     /* bit  0 */  "........";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("King may casle correctly 1", get_legal_moves(b, FILE_E, RANK_8) == 0x6c38000000000000LLU);
     m.from_file = FILE_A; 
     m.from_rank = RANK_8; 
@@ -154,7 +155,7 @@ static char *test_legal() {
     /* bit 16 */  "........"
     /* bit  8 */  "........" 
     /* bit  0 */  "........";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     m.from_file = FILE_E;
     m.from_rank = RANK_8;
     m.to_file = FILE_C;
@@ -173,7 +174,7 @@ static char *test_legal() {
     /* bit 16 */  "..x...x."
     /* bit  8 */  "...x.x.." 
     /* bit  0 */  "........";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("Knight moves ok 1", get_legal_moves(b, FILE_E, RANK_4) == 0x284400442800ULL);
     mu_assert("Knight moves ok 2", get_legal_moves(b, FILE_H, RANK_6) == 0x4020002040000000ULL);
     mu_assert("Knight moves ok 3", get_legal_moves(b, FILE_A, RANK_5) == 0x2040004020000ULL); 
@@ -190,7 +191,7 @@ static char *test_legal() {
     /* bit 16 */  "...R...."
     /* bit  8 */  "..k....r" 
     /* bit  0 */  "r.......";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("Pieces occupancy is right for rook test", bitboard_get_all_positions(b) == 0x292802100088401ULL);
     mu_assert("Rook moves ok 1", get_legal_moves(b, FILE_A, RANK_1) == 0x10101feULL);
     mu_assert("Rook moves ok 2", get_legal_moves(b, FILE_D, RANK_3) == 0x808080808f70808ULL);
@@ -209,7 +210,7 @@ static char *test_legal() {
     /* bit 16 */  "........"
     /* bit  8 */  "...B...." 
     /* bit  0 */  ".......b";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("Bishop moves ok 1", get_legal_moves(b, FILE_C, RANK_7) == 0xa000a1100000000ULL);
     mu_assert("Bishop moves ok 2", get_legal_moves(b, FILE_D, RANK_2) == 0x122140014ULL);
     mu_assert("Bishop moves ok 3", get_legal_moves(b, FILE_H, RANK_1) == 0x102040810204000ULL);
@@ -224,7 +225,7 @@ static char *test_legal() {
     ".....N.."
     "PP....PP"
     "R.BQKBNR";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("Bishop moves ok 4", get_legal_moves(b, FILE_F, RANK_1) == 0x10204081000LLU);
     destroy_bitboard(b);
 
@@ -237,7 +238,7 @@ static char *test_legal() {
     /* bit 16 */  "........"
     /* bit  8 */  "...Q...." 
     /* bit  0 */  ".......q";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("Queen moves ok 1", get_legal_moves(b, FILE_C, RANK_7) == 0xefb0e1504040404ULL);
     mu_assert("Queen moves ok 2", get_legal_moves(b, FILE_D, RANK_2) == 0x80808092a1cf71cULL);
     mu_assert("Queen moves ok 3", get_legal_moves(b, FILE_H, RANK_1) == 0x8182848890a0c07fULL);
@@ -252,7 +253,7 @@ static char *test_legal() {
     /* bit 16 */  "...p...."
     /* bit  8 */  "....P..." 
     /* bit  0 */  "........";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("Pawn moves ok 1", get_legal_moves(b, FILE_E, RANK_2) == 0x10180000LLU);
     mu_assert("Pawn moves ok 2", get_legal_moves(b, FILE_E, RANK_6) == 0x10000000000000LLU);
     mu_assert("Pawn moves ok 3", get_legal_moves(b, FILE_B, RANK_7) == 0x20200000000LLU);
@@ -268,7 +269,7 @@ static char *test_legal() {
     /* bit 16 */  ".P..N..."
     /* bit  8 */  "PQ.R..PP"
     /* bit  0 */  "....R.K.";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     mu_assert("Black queen moves ok", get_legal_moves(b, FILE_E, RANK_5) == 0x204082f38448200LLU);
 
     /* en-passant */
@@ -281,7 +282,7 @@ static char *test_legal() {
     /* bit 16 */  "........"
     /* bit  8 */  "...P...."
     /* bit  0 */  "........";
-	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     m.from_file = FILE_D;  /* d2-d4 */
     m.from_rank = RANK_2;
     m.to_file = FILE_D;

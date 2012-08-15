@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../bitboard.h"
+#include "bitboard.h"
 
 /* - - - - - SOME DECLARATIONS - - - - - - */
 
@@ -35,7 +35,7 @@ Bitboard *create_default_chessboard() {
         "........"
         "PPPPPPPP"
         "RNBQKBNR";
-	Bitboard *b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper);
+	Bitboard *b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
     return b;
 }
 
@@ -141,6 +141,7 @@ int is_valid_char(char ch)
             return 0;
     }
 
+    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -215,4 +216,6 @@ int main(int argc, char **argv) {
     else {
         perror(filename);
     }
+
+    return 0;
 }

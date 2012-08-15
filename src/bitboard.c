@@ -18,7 +18,7 @@ Bitboard *clone_bitboard(Bitboard *b)
     return new_b; 
 }
 
-Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element_size, PieceType (*func_type_mapper)(void *))
+Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element_size, PieceType (*func_type_mapper)(void *), int reverse_ranks)
 {
     Bitboard *b = create_blank_bitboard();
     
@@ -28,13 +28,36 @@ Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element
     b->white_castling_rights = 0x0ULL;
     b->black_castling_rights = 0x0ULL;
     b->enpassant_rights = 0x0ULL;
+    b->legal_move_iterator = 0x0ULL;
+
+    /* 
+     * this is supposed to be a single bit identifying the last cell from which
+     * the legal move was requested. Must just not be equal to any single cell
+     * at this initialisation point of the code.
+     */
+    b->legal_move_iterator_lastcell = 0xFFFFULL; 
 
     /* create the initial bitboard */
-    char *c = (char*) chessboard_base;
     int r, i, cell;
     cell = 0;
-    for (r=0; r<64; r+=8) {
-        for (i=r+7; i >= r; i--) {
+
+    int rstart = 0;
+    int rstop = 64;
+    int rinc = 8;
+    int istart = 7;
+    int iend = 0;
+    if (reverse_ranks) {
+        rstart = 63;
+        rstop = -1;
+        rinc = -8;
+        istart = 0;
+        iend = 7;
+    }
+
+    r = rstart;
+    while (r != rstop) {
+        for (i=r+istart; i >= r-iend; i--) { /* scan each rank from left to right */
+
             PieceType t = (*func_type_mapper)(chessboard_base + chessboard_element_size * i);
 
             int internal_cell = 63 - cell;
@@ -54,6 +77,8 @@ Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element
 
             cell++;
         }
+
+        r+=rinc;
     }
 
     /* clear castling rights if rooks are not in place */
@@ -111,15 +136,25 @@ void print_chessboard(Bitboard *b)
     int row;
     int col;
     int cell;
+    char rank = 'A';
+    char file = '8';
     PieceType t;
     for (row=7; row>=0; row--) {
+        printf("%c", file--);
         for (col=0; col<8; col++) {
-            cell = CELL(row, col);
+            cell = _CELL(row, col);
             t = b->piece_type[cell];
             printf(" %c", piece_repr[t]); 
         }
         printf("\n");
     }
+
+    int i;
+    printf(" ");
+    for (i=0; i<8; i++) {
+        printf(" %c", rank++);
+    }
+    printf("\n\n");
 }
 
 void print_bitboard(Bitboard *b)
@@ -186,7 +221,7 @@ U64 bitboard_get_all_positions(Bitboard *b)
 
 PieceType get_piece_type(Bitboard *b, FileType file, RankType rank)
 {
-    return b->piece_type[CELL(rank,file)];
+    return b->piece_type[_CELL(rank,file)];
 }
 
 U64 get_rook_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) 
@@ -207,7 +242,7 @@ U64 get_rook_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos)
     rook_reverse -= BSWAP_64(piece_pos);
     rook_forward ^= BSWAP_64(rook_reverse);
 
-    return result | rook_forward & rook_file_mask;
+    return result | (rook_forward & rook_file_mask);
 }
 
 U64 get_bishop_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) 
@@ -361,8 +396,8 @@ void _perform_piece_move(Bitboard *b, Move *m)
     }
 
     /* update_piece_type_mapping */
-    b->piece_type[CELL(m->from_rank, m->from_file)] = PIECE_NONE;
-    b->piece_type[CELL(m->to_rank, m->to_file)] = t;
+    b->piece_type[_CELL(m->from_rank, m->from_file)] = PIECE_NONE;
+    b->piece_type[_CELL(m->to_rank, m->to_file)] = t;
 }
 
 void bitboard_do_move(Bitboard *b, Move *m)
@@ -370,11 +405,10 @@ void bitboard_do_move(Bitboard *b, Move *m)
     Move rook_move;
     PieceType t = get_piece_type(b, m->from_file, m->from_rank);
     PieceType ttarget = get_piece_type(b, m->to_file, m->to_rank);
-    int cell_target = CELL(m->to_rank, m->to_file);
+    int cell_target = _CELL(m->to_rank, m->to_file);
     printf("C: %d\n", cell_target);
 
     U64 piece_pos = b->position[t] & _mask_cell(m->from_file, m->from_rank);
-    U64 target_piece_pos = b->position[ttarget] & _mask_cell(m->to_file, m->to_rank);
     U64 longsteps_old;
 
     /* clear enpassant chances (they'll be set later if necessary) */
@@ -493,4 +527,39 @@ void bitboard_do_move(Bitboard *b, Move *m)
 
     _perform_piece_move(b, m);
 
+}
+
+int get_next_legal_move(Bitboard *b, Move *ptr_move_dest)
+{
+    FileType f = ptr_move_dest->from_file;
+    RankType r = ptr_move_dest->from_rank;
+    U64 fr_cell = _mask_cell(f, r);
+
+    if ( 0x0ULL == b->legal_move_iterator) {
+        if (b->legal_move_iterator_lastcell == fr_cell) {
+            b->legal_move_iterator_lastcell = 0xFFULL;
+            return 0;
+        }
+        b->legal_move_iterator = get_legal_moves(b, f, r);
+        b->legal_move_iterator_lastcell = fr_cell;
+    }
+
+    U64 next_move = LS1B(b->legal_move_iterator);
+
+    U64 next_move_copy = next_move;
+    int cell_of_next_move = 0;
+    while(next_move_copy >>= 1) {
+        cell_of_next_move++;
+    }
+
+    if (!!(b->legal_move_iterator)) {
+        /* return and clear this move */
+        b->legal_move_iterator &= (~next_move);
+
+        ptr_move_dest->to_file = _FILE(cell_of_next_move);
+        ptr_move_dest->to_rank = _RANK(cell_of_next_move);
+        return 1;
+    }
+
+    return 0;
 }
