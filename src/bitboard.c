@@ -120,7 +120,7 @@ char *bitboard_piece_name(PieceType t)
     return piece_type_name[t];
 }
 
-void print_chessboard(Bitboard *b)
+void print_chessboard_move(Bitboard *b, Move *m)
 {
     char piece_repr[] = {
         'P',
@@ -149,7 +149,16 @@ void print_chessboard(Bitboard *b)
         for (col=0; col<8; col++) {
             cell = _CELL(row, col);
             t = b->piece_type[cell];
-            printf(" %c", piece_repr[t]); 
+
+            if (NULL != m && m->from_rank == row && m->from_file == col) {
+                printf(" \033[31m%c\033[0m", piece_repr[t]);
+            }
+            else if (NULL != m && m->to_rank == row && m->to_file == col) {
+                printf(" \033[34m%c\033[0m", piece_repr[t]);
+            }
+            else {
+                printf(" %c", piece_repr[t]); 
+            }
         }
         printf("\n");
     }
@@ -160,6 +169,12 @@ void print_chessboard(Bitboard *b)
         printf(" %c", rank++);
     }
     printf("\n\n");
+
+}
+
+void print_chessboard(Bitboard *b)
+{
+    print_chessboard_move(b, NULL);
 }
 
 void print_bitboard(Bitboard *b)
@@ -170,6 +185,8 @@ void print_bitboard(Bitboard *b)
         printf("%s)\n", bitboard_piece_name(i));
         print_bits(b->position[i]);
     }
+    printf(" - - - enpassant rights - - - \n");
+    print_bits(b->enpassant_rights);
 }
 
 void print_bits(U64 bits)
@@ -379,9 +396,6 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
     else
         result &= ~bitboard_get_black_positions(b);
 
-    printf("%s %d (in file:%d rank: %d) possible moves:\n", bitboard_piece_name(t), t, file, rank);
-    print_bits(result);
-    printf("In hex: 0x%llxLLU\n\n", result);
     return result;
 }
 

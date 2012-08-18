@@ -105,6 +105,7 @@ U64 bitboard_get_all_positions(Bitboard *b);
 char *bitboard_piece_name(PieceType t);
 void print_bitboard(Bitboard *b);
 void print_chessboard(Bitboard *b);
+void print_chessboard_move(Bitboard *b, Move *m);
 void print_bits(U64 b);
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank);
 int get_next_legal_move(Bitboard *b, Move *ptr_move_dest);
