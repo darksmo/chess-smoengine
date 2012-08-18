@@ -89,7 +89,8 @@ int do_move(Move *m)
         if (verbose) { print_chessboard_move(chessboard, m); }
         return 1;
     }
-    printf("NOT LEGAL!\n");
+    printf("!!! NOT LEGAL !!!\n");
+    print_chessboard_move(chessboard, m);
     printf("The current chessboard looks like:\n");
     print_chessboard(chessboard);
     print_bitboard(chessboard);
@@ -178,7 +179,7 @@ int main(int argc, char **argv) {
     Bitboard *chessboard = create_default_chessboard();
 
     /* the game to load */
-    const char *filename = "../games/Adams.whalg";
+    const char *filename = "../games/all_games.whalg";
 
     /* expect the first move for a new game */
     new_game();
