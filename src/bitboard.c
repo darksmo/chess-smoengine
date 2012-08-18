@@ -311,28 +311,39 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
     U64 pclip_g = piece_pos & _clear_file(FILE_G);
 
     U64 pawn_attacks_mask;
+    U64 piece_along_the_longstep;
 
     switch (t) {
         case WHITE_PAWN:
             /* pawn attacks */
+            piece_along_the_longstep = (bitboard_get_all_positions(b) & _mask_cell(file, rank+1));
             pawn_attacks_mask = (pclip_a << 7) | (pclip_h << 9);
             pawn_attacks_mask &= (bitboard_get_black_positions(b) | b->enpassant_rights);
             
             /* pawn movements */
-            result =( (piece_pos << 8) 
-                    | ((b->white_remaining_pawns_longsteps & piece_pos) << 16)
+            result =
+                ( (piece_pos << 8) 
+                    | ((b->white_remaining_pawns_longsteps 
+                        & piece_pos
+                        & (~piece_along_the_longstep >> 8)
+                    ) << 16 )
                 ) & (~bitboard_get_black_positions(b));
 
             result |= pawn_attacks_mask;
             break;
         case BLACK_PAWN:
             /* pawn attacks */
-            pawn_attacks_mask = (pclip_h >> 7) | (pclip_a >> 9) | b->enpassant_rights;
-            pawn_attacks_mask &= bitboard_get_white_positions(b);
+            piece_along_the_longstep = (bitboard_get_all_positions(b) & _mask_cell(file, rank-1));
+            pawn_attacks_mask = (pclip_h >> 7) | (pclip_a >> 9);
+            pawn_attacks_mask &= (bitboard_get_white_positions(b) | b->enpassant_rights); 
             
             /* pawn movements */
-            result =( (piece_pos >> 8) 
-                    | ((b->black_remaining_pawns_longsteps & piece_pos) >> 16)
+            result =
+                ( (piece_pos >> 8)                          /* can move forward */
+                    | ((b->black_remaining_pawns_longsteps  /* or forward by two */
+                        & piece_pos                         /* if the piece is in the initial position */
+                        & (~piece_along_the_longstep << 8)  /* and no pawn is along the way */
+                      ) >> 16)
                 ) & (~bitboard_get_white_positions(b));
 
             result |= pawn_attacks_mask;
