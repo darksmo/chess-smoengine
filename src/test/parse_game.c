@@ -150,9 +150,29 @@ int is_valid_char(char ch)
     return 0;
 }
 
+PieceType maybe_promote_piece(char ch, ParserLookFor state) {
+    if (state == READ_SECOND_RANK) {
+        switch (ch) {
+            case 'Q': return WHITE_QUEEN;
+            case 'R': return WHITE_ROOK;
+            case 'N': return WHITE_KNIGHT;
+            case 'B': return WHITE_BISHOP;
+        }
+    }
+    else {
+        switch (ch) {
+            case 'Q': return BLACK_QUEEN;
+            case 'R': return BLACK_ROOK;
+            case 'N': return BLACK_KNIGHT;
+            case 'B': return BLACK_BISHOP;
+        }
+    }
+    return PIECE_NONE;
+}
+
 int main(int argc, char **argv) {
     /* will fill up the move as we parse it */
-    Move move;
+    Move move = {0};
 
     /* start from a default chessboard */
     Bitboard *chessboard = create_default_chessboard();
@@ -207,6 +227,10 @@ int main(int argc, char **argv) {
                             case READ_SECOND_RANK:
                             case READ_FOURTH_RANK:
                                 move.to_rank = ch - 49;
+                                
+                                /* before making the move, check if we are going to promote */
+                                move.promote_to = maybe_promote_piece(line[line_idx], state);
+
                                 all_legal_moves_so_far = do_move(&move);
                                 break;
                         }
