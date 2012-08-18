@@ -60,8 +60,12 @@ ParserLookFor state = READ_MOVE_NUMBER;
 
 /* - - - - - - EVENTS CALLED FROM PARSER - - - - - - */ 
 
+unsigned long long ingame_move_counter;
+unsigned long long games_counter = 0;
+unsigned long long move_counter = 0;
 void new_game() 
 {
+    ingame_move_counter = 0;
     if (chessboard) {
         destroy_bitboard(chessboard);
     }
@@ -72,13 +76,12 @@ void new_game()
     }
 }
 
-int move_counter = 0;
 int do_move(Move *m)
 {
-    move_counter++;
+    ingame_move_counter++;
     if (verbose) {
-        printf("[%d] Move %c%c - %c%c ", 
-           move_counter,
+        printf("[%llu] Move %c%c - %c%c ", 
+           move_counter + ingame_move_counter,
            m->from_file + 97, m->from_rank + 49,
            m->to_file + 97, m->to_rank + 49
         );
@@ -99,13 +102,15 @@ int do_move(Move *m)
 
 void end_game()
 {
-    printf("--- end of game --- \n");
+    if (ingame_move_counter) {
+        move_counter += ingame_move_counter;
+        games_counter++;
+    }
+
+    if (verbose) { printf("--- end of game ---\n"); }
     destroy_bitboard(chessboard);
     chessboard = NULL;
-
-    printf("Validated %d total moves.\n", move_counter);
 }
-
 
 
 /* - - - - - PARSER & HELPERS - - - - - - - */
@@ -114,7 +119,7 @@ int is_valid_char(char ch)
 {
     switch (state){
         case READ_MOVE_NUMBER:
-            if (ch == '-') { 
+            if (ch == '-' || ch == '*') { 
                 /* HALT CONDITION */
                 end_game(); 
                 new_game();
@@ -128,7 +133,7 @@ int is_valid_char(char ch)
             break;
         case READ_FIRST_FILE:
         case READ_THIRD_FILE:
-            if (ch == '-') { 
+            if (ch == '-' || ch == '*') { 
                 /* HALT CONDITION */
                 end_game(); 
                 new_game();
@@ -201,7 +206,7 @@ int main(int argc, char **argv) {
             if (line[0] != '[' && line[0] != ' ') {
 
                 /* inspect a line */
-                printf("Parsing: %s", line);
+                if (verbose) { printf("Parsing: %s", line); }
                 line_idx = 0;
 
                 while (all_legal_moves_so_far 
@@ -247,6 +252,7 @@ int main(int argc, char **argv) {
     else {
         perror(filename);
     }
+    printf("Validated %llu total moves in %llu games.\n", move_counter, games_counter);
 
     return 0;
 }
