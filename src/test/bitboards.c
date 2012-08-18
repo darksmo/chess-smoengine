@@ -95,7 +95,8 @@ static char *test_clears() {
 }
 
 static char *test_legal() {
-    Move m; 
+    Move m;
+    m.promote_to = PIECE_NONE;
     Bitboard *b = create_test_bitboard();
     mu_assert("King cannot move", get_legal_moves(b, FILE_E, RANK_1) == 0ULL);
     destroy_bitboard(b);
