@@ -5,6 +5,8 @@
 
 /* - - - - - SOME DECLARATIONS - - - - - - */
 
+int verbose = 0;
+
 PieceType type_mapper(void *el)
 {
     char * x = (char*) el;
@@ -64,39 +66,43 @@ void new_game()
         destroy_bitboard(chessboard);
     }
     chessboard = create_default_chessboard();
-    printf("Created Chessboard\n");
-    print_chessboard(chessboard);
+    if (verbose) { 
+        printf("Created Chessboard\n");
+        print_chessboard(chessboard);
+    }
 }
 
- /* TODO: 
-  * - do the move and return 1 if the move is legal on the current chessboard.
-  * - scream and return 0 otherwise!
-  */
+int move_counter = 0;
 int do_move(Move *m)
 {
-    printf("Move %c%c - %c%c ",
-        m->from_file + 97, m->from_rank + 49,
-        m->to_file + 97, m->to_rank + 49
-    );
+    move_counter++;
+    if (verbose) {
+        printf("[%d] Move %c%c - %c%c ", 
+           move_counter,
+           m->from_file + 97, m->from_rank + 49,
+           m->to_file + 97, m->to_rank + 49
+        );
+    }
     if (is_legal_move(chessboard, m)) {
-        printf("OK\n");
+        if (verbose) { printf("OK\n"); }
         bitboard_do_move(chessboard, m);
-        print_chessboard(chessboard);
+        if (verbose) { print_chessboard_move(chessboard, m); }
         return 1;
     }
     printf("NOT LEGAL!\n");
     printf("The current chessboard looks like:\n");
     print_chessboard(chessboard);
-    printf("The current bitboard looks like:\n");
     print_bitboard(chessboard);
     return 0;
 }
 
 void end_game()
 {
-    printf("Game ended\n");
+    printf("--- end of game --- \n");
     destroy_bitboard(chessboard);
     chessboard = NULL;
+
+    printf("Validated %d total moves.\n", move_counter);
 }
 
 
@@ -174,7 +180,7 @@ int main(int argc, char **argv) {
             if (line[0] != '[' && line[0] != ' ') {
 
                 /* inspect a line */
-                printf("Parsing: %s\n", line);
+                printf("Parsing: %s", line);
                 line_idx = 0;
 
                 while (all_legal_moves_so_far 
