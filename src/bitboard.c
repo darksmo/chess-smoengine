@@ -58,7 +58,8 @@ Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element
     while (r != rstop) {
         for (i=r+istart; i >= r-iend; i--) { /* scan each rank from left to right */
 
-            PieceType t = (*func_type_mapper)(chessboard_base + chessboard_element_size * i);
+            void *piece_addr = chessboard_base + chessboard_element_size * i;
+            PieceType t = (*func_type_mapper)(piece_addr);
 
             int internal_cell = 63 - cell;
             if (t != PIECE_NONE) {
@@ -71,7 +72,11 @@ Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element
                 }
 
                 /* place the piece in the positional bitboard */
-                b->position[t] = b->position[t] | 1ULL << internal_cell;
+                b->position[t] = b->position[t] | (1ULL << internal_cell);
+                b->pieces_addr[internal_cell] = piece_addr;
+            }
+            else {
+                b->pieces_addr[internal_cell] = NULL;
             }
             b->piece_type[internal_cell] = t;
 
@@ -222,6 +227,11 @@ U64 bitboard_get_all_positions(Bitboard *b)
 PieceType get_piece_type(Bitboard *b, FileType file, RankType rank)
 {
     return b->piece_type[_CELL(rank,file)];
+}
+
+void *get_piece_addr(Bitboard *b, FileType file, RankType rank)
+{
+    return b->pieces_addr[_CELL(rank,file)];
 }
 
 U64 get_rook_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) 
@@ -385,19 +395,28 @@ void _perform_piece_move(Bitboard *b, Move *m)
 {
     PieceType t = get_piece_type(b, m->from_file, m->from_rank);
     PieceType ttarget = get_piece_type(b, m->to_file, m->to_rank);
+    PieceType ttarget_new = (PIECE_NONE == m->promote_to) ? t : m->promote_to;
 
     /* move to position */
-    b->position[t] &= (~_mask_cell(m->from_file, m->from_rank));
-    b->position[t] |= (_mask_cell(m->to_file, m->to_rank));
+    b->position[t] &= (~_mask_cell(m->from_file, m->from_rank));       /* remove piece from original square */
+    b->position[ttarget_new] |= (_mask_cell(m->to_file, m->to_rank));  /* place piece to target square */
 
-    /* the piece type may be empty for example for en-passant captures */
-    if (t != PIECE_NONE) {
-        b->position[ttarget] &= (~_mask_cell(m->to_file, m->to_rank));
+    /* the target piece type may be empty for example for en-passant captures */
+    if (ttarget != PIECE_NONE) {
+        b->position[ttarget] &= (~_mask_cell(m->to_file, m->to_rank)); /* clear from the capture piece in case */
+    }
+    else {
+        /* the piece simply moved or captured en-passant */
     }
 
-    /* update_piece_type_mapping */
+    /* update piece_type_mapping */
     b->piece_type[_CELL(m->from_rank, m->from_file)] = PIECE_NONE;
-    b->piece_type[_CELL(m->to_rank, m->to_file)] = t;
+    b->piece_type[_CELL(m->to_rank, m->to_file)] = ttarget_new;
+
+    /* update original piece position */
+    void *piece_addr_from = b->pieces_addr[_CELL(m->from_rank, m->from_file)];
+    b->pieces_addr[_CELL(m->from_rank, m->from_file)] = NULL;
+    b->pieces_addr[_CELL(m->to_rank, m->to_file)] = piece_addr_from;
 }
 
 void bitboard_do_move(Bitboard *b, Move *m)
@@ -406,9 +425,8 @@ void bitboard_do_move(Bitboard *b, Move *m)
     PieceType t = get_piece_type(b, m->from_file, m->from_rank);
     PieceType ttarget = get_piece_type(b, m->to_file, m->to_rank);
     int cell_target = _CELL(m->to_rank, m->to_file);
-    printf("C: %d\n", cell_target);
 
-    U64 piece_pos = b->position[t] & _mask_cell(m->from_file, m->from_rank);
+    U64 piece_pos = (b->position[t] & _mask_cell(m->from_file, m->from_rank));
     U64 longsteps_old;
 
     /* clear enpassant chances (they'll be set later if necessary) */
@@ -427,7 +445,7 @@ void bitboard_do_move(Bitboard *b, Move *m)
                  * chances by turning on the en-passant bit as if the pawn moved of one
                  * position.
                  */ 
-                b->enpassant_rights = piece_pos << 8;
+                b->enpassant_rights = (piece_pos << 8);
             }
             
             /* 
@@ -438,70 +456,86 @@ void bitboard_do_move(Bitboard *b, Move *m)
                 /* Clear out captured pawn behind the target*/
                 b->position[BLACK_PAWN] &= ~(_mask_cell(m->to_file, m->to_rank-1));
                 b->piece_type[cell_target - 8] = PIECE_NONE;
+                b->pieces_addr[cell_target - 8] = NULL;
             }
             
             break;
         case BLACK_PAWN:
-            longsteps_old = b->white_remaining_pawns_longsteps;
+            longsteps_old = b->black_remaining_pawns_longsteps;
 
             /* clear available longsteps for the pawn of this color */
             b->black_remaining_pawns_longsteps &= ~piece_pos;
 
             if (longsteps_old != b->black_remaining_pawns_longsteps) {
                 /* enable enpassant chances (see comment for white). */ 
-                b->enpassant_rights = piece_pos >> 8;
+                b->enpassant_rights = (piece_pos >> 8);
             }
             
             if (m->to_file != m->from_file && ttarget == PIECE_NONE) {
                 /* Clear out captured pawn behind the target*/
-                b->position[BLACK_PAWN] &= ~(_mask_cell(m->to_file, m->to_rank + 1));
+                b->position[WHITE_PAWN] &= ~(_mask_cell(m->to_file, m->to_rank+1));
                 b->piece_type[cell_target + 8] = PIECE_NONE;
+                b->pieces_addr[cell_target + 8] = NULL;
             }
             break;
         case WHITE_KING:
-            b->white_castling_rights = 0x0ULL;
-
             /* 
              * The followings are to move the rook next to the king in case of
              * castling.
              */
-            if (_CELL_WHITE_KING_LEFTCASTLE == cell_target) {
+            if (_CELL_WHITE_KING_LEFTCASTLE == cell_target
+                && (MASK_WHITE_KING_LEFT_CASTLE & b->white_castling_rights)) {
+
                 rook_move.from_file = FILE_A; 
                 rook_move.from_rank = RANK_1;
                 rook_move.to_file =   FILE_D;
                 rook_move.to_rank =   RANK_1;
+                rook_move.promote_to = PIECE_NONE;
                 _perform_piece_move(b, &rook_move);
             }
-            else if (_CELL_WHITE_KING_RIGHTCASTLE == cell_target) {
+            else if (_CELL_WHITE_KING_RIGHTCASTLE == cell_target
+                && (MASK_WHITE_KING_RIGHT_CASTLE & b->white_castling_rights)) {
+
                 rook_move.from_file = FILE_H; 
                 rook_move.from_rank = RANK_1;
                 rook_move.to_file =   FILE_F;
                 rook_move.to_rank =   RANK_1;
+                rook_move.promote_to = PIECE_NONE;
                 _perform_piece_move(b, &rook_move);
             }
+
+            b->white_castling_rights = 0x0ULL;
+
             break;
 
         case BLACK_KING:
-            b->black_castling_rights = 0x0ULL;
 
             /* 
              * The followings are to move the rook next to the king in case of
              * castling.
              */
-            if (_CELL_BLACK_KING_LEFTCASTLE == cell_target) {
+            if (_CELL_BLACK_KING_LEFTCASTLE == cell_target
+                && (MASK_BLACK_KING_LEFT_CASTLE & b->black_castling_rights)) {
+
                 rook_move.from_file = FILE_A; 
                 rook_move.from_rank = RANK_8;
                 rook_move.to_file =   FILE_D;
                 rook_move.to_rank =   RANK_8;
+                rook_move.promote_to = PIECE_NONE;
                 _perform_piece_move(b, &rook_move);
             }
-            else if (_CELL_BLACK_KING_RIGHTCASTLE == cell_target) {
+            else if (_CELL_BLACK_KING_RIGHTCASTLE == cell_target
+                && (MASK_BLACK_KING_RIGHT_CASTLE & b->black_castling_rights)) {
                 rook_move.from_file = FILE_H; 
                 rook_move.from_rank = RANK_8;
                 rook_move.to_file =   FILE_F;
                 rook_move.to_rank =   RANK_8;
+                rook_move.promote_to = PIECE_NONE;
                 _perform_piece_move(b, &rook_move);
             }
+
+            b->black_castling_rights = 0x0ULL;
+
             break;
         case BLACK_ROOK:
             if (m->from_file == FILE_A && m->from_rank == RANK_8) {
@@ -525,6 +559,7 @@ void bitboard_do_move(Bitboard *b, Move *m)
             break;
     }
 
+    rook_move.promote_to = PIECE_NONE;
     _perform_piece_move(b, m);
 
 }
