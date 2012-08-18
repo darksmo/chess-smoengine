@@ -146,7 +146,7 @@ static char *test_legal() {
     mu_assert("King cannot castle", get_legal_moves(b, FILE_E, RANK_8) == 0x2838000000000000LLU);
     destroy_bitboard(b);
     
-    /* king castles correctly */
+    /* king castles correctly-1*/
     chessboard =
     /* bit 56 */  "r...k..r" 
     /* bit 48 */  "........"
@@ -166,6 +166,40 @@ static char *test_legal() {
     mu_assert("Found rook in the expected place", BLACK_ROOK == get_piece_type(b, FILE_D, RANK_8));
     mu_assert("Found king in the expected place", BLACK_KING == get_piece_type(b, FILE_C, RANK_8));
     
+    /* king castles correctly-2*/
+    chessboard =
+    /* bit 56 */  "r...k..r" 
+    /* bit 48 */  "........"
+    /* bit 40 */  "........"
+    /* bit 32 */  "........"
+    /* bit 24 */  "........" 
+    /* bit 16 */  "........"
+    /* bit  8 */  "........" 
+    /* bit  0 */  "........";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
+    m.from_file = FILE_E;
+    m.from_rank = RANK_8;
+    m.to_file = FILE_G;
+    m.to_rank = RANK_8;
+    bitboard_do_move(b, &m);
+    print_chessboard(b);
+    mu_assert("Found rook in the expected place", BLACK_ROOK == get_piece_type(b, FILE_F, RANK_8));
+    mu_assert("Found king in the expected place", BLACK_KING == get_piece_type(b, FILE_G, RANK_8));
+    /* move to top-right corner */
+    m.from_file = FILE_G;
+    m.from_rank = RANK_8;
+    m.to_file = FILE_H;
+    m.to_rank = RANK_8;
+    bitboard_do_move(b, &m);
+    mu_assert("Found king in the expected place", BLACK_KING == get_piece_type(b, FILE_H, RANK_8));
+    /* move back */
+    m.from_file = FILE_H;
+    m.from_rank = RANK_8;
+    m.to_file = FILE_G;
+    m.to_rank = RANK_8;
+    bitboard_do_move(b, &m);
+    mu_assert("Found king in the expected place", BLACK_KING == get_piece_type(b, FILE_G, RANK_8));
+
 	chessboard =
     /* bit 56 */  ".n......" 
     /* bit 48 */  "........"
