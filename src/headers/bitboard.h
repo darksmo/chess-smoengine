@@ -108,6 +108,17 @@ void print_chessboard(Bitboard *b);
 void print_chessboard_move(Bitboard *b, Move *m);
 void print_bits(U64 b);
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank);
+
+/*
+ * get_next_legal_move: used to iterate on legal moves of the piece at the
+ * specified source square.
+ *
+ * 1) fill up a struct Move specifying its from_file, and from_rank.
+ * 2) pass it to get_next_legal_move in a while loop.
+ * 3) if the result is 1, the Move will be filled with the target_rank,
+ *    target_file information. If no moves are available for the specified
+ *    start position, the function returns 0.
+ */
 int get_next_legal_move(Bitboard *b, Move *ptr_move_dest);
 
 PieceType get_piece_type(Bitboard *b, FileType file, RankType rank);
