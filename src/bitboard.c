@@ -588,6 +588,29 @@ void bitboard_do_move(Bitboard *b, Move *m)
     _perform_piece_move(b, m);
 }
 
+/*
+ * Given a 64bit integer containing the position of white/black/other pieces,
+ * fills up the struct Move corresponding to the next bit 1 found, and returns
+ * the input without that bit (to be used in iteration. This function is useful
+ * to enumerate all the squares occupied by pieces.
+ *
+ * - ptr_move_result* must be a pointer to a previously initialised stuct Move.
+ * - only the from_file, from_rank fields of *ptr_move_result are filled
+ *
+ */
+U64 get_next_cell_in(U64 positions, Move *ptr_move_result)
+{
+    /* don't even attempt to compute the position if none is available */
+    if (!positions) return positions;
+
+    U64 mask_ls1b = LS1B(positions);
+    int cell_number = _cell_of_bit(mask_ls1b);
+    ptr_move_result->from_file = _FILE(cell_number);
+    ptr_move_result->from_rank = _RANK(cell_number);
+
+    return (positions & (~mask_ls1b));
+}
+
 int get_next_legal_move(Bitboard *b, Move *ptr_move_dest)
 {
     FileType f = ptr_move_dest->from_file;

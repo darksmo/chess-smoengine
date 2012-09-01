@@ -121,6 +121,18 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank);
  */
 int get_next_legal_move(Bitboard *b, Move *ptr_move_dest);
 
+/*
+ * Given a 64bit integer containing the position of white/black/other pieces,
+ * fills up the struct Move corresponding to the next bit 1 found, and returns
+ * the input without that bit (to be used in iteration. This function is useful
+ * to enumerate all the squares occupied by pieces.
+ *
+ * - ptr_move_result* must be a pointer to a previously initialised stuct Move.
+ * - only the from_file, from_rank fields of *ptr_move_result are filled
+ *
+ */
+U64 get_next_cell_in(U64 positions, Move *ptr_move_result);
+
 PieceType get_piece_type(Bitboard *b, FileType file, RankType rank);
 void *get_piece_addr(Bitboard *b, FileType file, RankType rank);
 

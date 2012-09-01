@@ -28,6 +28,23 @@ PieceType type_mapper(void *el)
     return PIECE_NONE;
 }
 
+static char *test_cell_enumeration() {
+    U64 moves = 0x800008008000ULL;
+    FileType test_files[] = {FILE_H, FILE_D, FILE_H};
+    RankType test_ranks[] = {RANK_2, RANK_4, RANK_6};
+    
+    Move m;
+    int i = -1;
+    /* 15 47 27 */
+    while (moves) {
+        i++;
+        moves = get_next_cell_in(moves, &m);
+        mu_assert("Got correct from_rank", m.from_rank == test_ranks[i]);
+        mu_assert("Got correct from_file", m.from_file == test_files[i]);
+    }
+    return 0;
+}
+
 static char *test_64_bits_arithmetics() {
     U64 n;
     n = 0xFFFFFFFFFFFFFFFF;
@@ -365,6 +382,7 @@ static char *test_legal() {
 }
 
 static char *all_tests() {
+    mu_run_test(test_cell_enumeration);
     mu_run_test(test_masks);
     mu_run_test(test_clears);
     mu_run_test(test_64_bits_arithmetics);
