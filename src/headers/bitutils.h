@@ -28,4 +28,10 @@ U64 _mirror(U64 bit);
 U64 _mask_diag(unsigned int n);
 U64 _mask_antidiag(unsigned int n);
 
+/*
+ * Given a 64bit integer and a count, returns the position of the most
+ * significant bit found.
+ */
+int _cell_of_bit(U64 bit);
+
 #endif

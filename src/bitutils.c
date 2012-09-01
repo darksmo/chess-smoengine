@@ -88,3 +88,11 @@ U64 _mirror(U64 bit)
     }
     return bit;
 }
+
+int _cell_of_bit(U64 bit) {
+    int cell_of_next_move = 0;
+    while(bit >>= 1) {
+        cell_of_next_move++;
+    }
+    return cell_of_next_move;
+}

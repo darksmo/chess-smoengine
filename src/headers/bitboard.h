@@ -91,7 +91,7 @@ typedef struct {
 
 Bitboard *create_bitboard(void *chessboard_base, unsigned int chessboard_element_size, PieceType (*func_type_mapper)(void *), int reverse_ranks);
 Bitboard *create_blank_bitboard();
-Bitboard *clone_bitboard();
+Bitboard *clone_bitboard(Bitboard *b);
 Bitboard *create_blank_bitboard();
 void destroy_bitboard(Bitboard *bitboard);
 

@@ -586,7 +586,6 @@ void bitboard_do_move(Bitboard *b, Move *m)
 
     rook_move.promote_to = PIECE_NONE;
     _perform_piece_move(b, m);
-
 }
 
 int get_next_legal_move(Bitboard *b, Move *ptr_move_dest)
@@ -604,13 +603,9 @@ int get_next_legal_move(Bitboard *b, Move *ptr_move_dest)
         b->legal_move_iterator_lastcell = fr_cell;
     }
 
+    /* the next move is the next bit 1 we encounter */
     U64 next_move = LS1B(b->legal_move_iterator);
-
-    U64 next_move_copy = next_move;
-    int cell_of_next_move = 0;
-    while(next_move_copy >>= 1) {
-        cell_of_next_move++;
-    }
+    int cell_of_next_move = _cell_of_bit(next_move);
 
     if (!!(b->legal_move_iterator)) {
         /* return and clear this move */
