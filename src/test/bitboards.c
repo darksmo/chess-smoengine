@@ -2,31 +2,11 @@
 #include <stdlib.h>
 #include "minunit.h"
 
-#include "bitboard.h"
-
+#include "test_common.h"
 
 /* - - - - - - -  Tests for bitboards - - - - - - - - */
 int tests_run = 0;
 
-PieceType type_mapper(void *el)
-{
-    char * x = (char*) el;
-    switch (*x) {
-        case 'r': return BLACK_ROOK;
-        case 'n': return BLACK_KNIGHT;
-        case 'b': return BLACK_BISHOP;
-        case 'q': return BLACK_QUEEN;
-        case 'k': return BLACK_KING;
-        case 'p': return BLACK_PAWN;
-        case 'R': return WHITE_ROOK;
-        case 'N': return WHITE_KNIGHT;
-        case 'B': return WHITE_BISHOP;
-        case 'Q': return WHITE_QUEEN;
-        case 'K': return WHITE_KING;
-        case 'P': return WHITE_PAWN;
-    }
-    return PIECE_NONE;
-}
 
 static char *test_cell_enumeration() {
     U64 moves = 0x800008008000ULL;
@@ -56,21 +36,6 @@ static char *test_64_bits_arithmetics() {
     n = 1ULL << 10;
     mu_assert("Left shift works as expected", n == 0x400);
     return 0;
-}
-
-static Bitboard *create_test_bitboard() {
-	char *chessboard =
-        "rnbqkbnr"
-        "pppppppp"
-        "........"
-        "........"
-        "........"
-        "........"
-        "PPPPPPPP"
-        "RNBQKBNR";
-	Bitboard *b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
-    print_chessboard(b);
-    return b;
 }
 
 static char *test_bitboard_positions() {

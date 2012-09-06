@@ -1,5 +1,5 @@
 INC = -I./src -I./src/headers -fPIC
-LDFLAGS = $(INC) 
+LDFLAGS = $(INC)
 CC = gcc
 AR = ar
 
@@ -7,13 +7,16 @@ main: clean tests libmac
 
 linux: clean tests liblinux
 
-tests: test_bitboards test_bitutils parse_game
+tests: test_bitboards test_bitutils test_engine parse_game
 
 test_bitboards: clean
 	$(CC) src/test/bitboards.c src/*.c $(LDFLAGS) -o ./build/test_bitboards
 
 test_bitutils: clean
 	$(CC) src/test/bitutils.c src/*.c $(LDFLAGS) -o ./build/test_bitutils
+
+test_engine: clean
+	$(CC) src/test/engine.c src/*.c $(LDFLAGS) -o ./build/test_engine
 
 parse_game:
 	$(CC) src/test/parse_game.c src/*.c $(LDFLAGS) -o ./build/parse_games
