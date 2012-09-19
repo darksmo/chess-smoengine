@@ -101,6 +101,15 @@ void destroy_bitboard(Bitboard *bitboard)
 	free(bitboard);
 }
 
+void init_move(Move *m) 
+{
+    m->from_file = FILE_A;
+    m->from_rank = RANK_1;
+    m->to_file   = FILE_H;
+    m->to_rank   = RANK_7;
+    m->promote_to = PIECE_NONE;
+}
+
 char *bitboard_piece_name(PieceType t)
 {
     char *piece_type_name[] = {
@@ -611,6 +620,11 @@ U64 get_next_cell_in(U64 positions, Move *ptr_move_result)
     return (positions & (~mask_ls1b));
 }
 
+void reset_legal_move_iterator(Bitboard *b) {
+    b->legal_move_iterator = 0x0ULL;
+    b->legal_move_iterator_lastcell = 0xFFFFULL;
+}
+
 int get_next_legal_move(Bitboard *b, Move *ptr_move_dest)
 {
     FileType f = ptr_move_dest->from_file;
@@ -619,7 +633,7 @@ int get_next_legal_move(Bitboard *b, Move *ptr_move_dest)
 
     if ( 0x0ULL == b->legal_move_iterator) {
         if (b->legal_move_iterator_lastcell == fr_cell) {
-            b->legal_move_iterator_lastcell = 0xFFULL;
+            b->legal_move_iterator_lastcell = 0xFFFFULL;
             return 0;
         }
         b->legal_move_iterator = get_legal_moves(b, f, r);

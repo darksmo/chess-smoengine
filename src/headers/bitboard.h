@@ -95,6 +95,8 @@ Bitboard *clone_bitboard(Bitboard *b);
 Bitboard *create_blank_bitboard();
 void destroy_bitboard(Bitboard *bitboard);
 
+void init_move(Move *m);
+
 /* I may cache these for efficiency */
 int is_legal_move(Bitboard *b, Move *m);
 void bitboard_do_move(Bitboard *b, Move *m);
@@ -108,6 +110,7 @@ void print_chessboard(Bitboard *b);
 void print_chessboard_move(Bitboard *b, Move *m);
 void print_bits(U64 b);
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank);
+void reset_legal_move_iterator(Bitboard *b);
 
 /*
  * get_next_legal_move: used to iterate on legal moves of the piece at the

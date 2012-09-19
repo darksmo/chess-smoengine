@@ -11,12 +11,12 @@ int tests_run = 0;
 static char *test_get_best_move() {
     Move m_result;
     Bitboard *b = create_test_bitboard();
-    mu_assert("Obtained the best move", 1 == get_best_move(b, &m_result, PIECE_COLOR_BLACK));
+    mu_assert("Obtained the best move", 1 == get_best_move(b, &m_result, PIECE_COLOR_WHITE));
 
     printf("The best move:\n");
-    print_chessboard_move(b, &m_result);
+    // print_chessboard_move(b, &m_result);
    
-    destroy_bitboard(b);
+    // destroy_bitboard(b);
     return 0;
 }
 

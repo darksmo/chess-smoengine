@@ -11,83 +11,125 @@ double evaluate_one_move(Bitboard *b, Move *m) {
 /* turn: 0 = black, 1 = white */
 
 int get_best_move(Bitboard *b, Move *ptr_move_result, PieceColor turn) {
-    Bitboard *bclone;
+    
+    /* in case we reach the maximum limit */
+    int flag_nomem = 0;
 
-    /* best moves and scores */
-    Move * moves = malloc(sizeof(Move) * ENGINE_MAX_MOVES_TO_SCORE);
-    if (!moves) {
-        fprintf(stderr, "fatal: cannot allocate memory for moves\n");
+    /* scored bitboard tree */
+    unsigned long int max_moves_to_score = ENGINE_MAX_MEMORY / (sizeof(Bitboard) + sizeof(EvalNode));
+    EvalNode *tree = malloc(sizeof(EvalNode) * max_moves_to_score);
+    printf("Attempting to score %ld moves\n", max_moves_to_score);
+    if (!tree) {
+        fprintf(stderr, "Error allocating memory for tree\n");
         exit(1);
     }
-    double scores[ENGINE_MAX_MOVES_TO_SCORE];
 
-    /* an index over moves and scores */
-    int ms_idx = 0;
-    int ms_idx_old = 0;
-
-    /* the maximum score found so far */
-    int max_move_idx = 0;
-    scores[0] = -1 * SCORE_INFINITE;
+    /* 
+     * Populate initial roots 
+     */
+    unsigned long int next = 0;
+    unsigned long int first = 0;
+    unsigned long int last = 0;
 
     /* iterate through all moves of the current color */
     U64 piece_positions = (turn == PIECE_COLOR_WHITE) 
         ?  bitboard_get_white_positions(b)
         :  bitboard_get_black_positions(b);
 
-    int max_hit = 0;
-                                                       
-    Move * ptr_move = &(moves[ms_idx]);
+    Move move;
+    while (piece_positions && !flag_nomem) {
 
-    while (piece_positions) {
-
-        /* fills from* fields */
-        piece_positions = get_next_cell_in(piece_positions, ptr_move);
-        
         /* evaluate all legal moves */
-        while (get_next_legal_move(b, ptr_move)) {
+        init_move(&move);
+        piece_positions = get_next_cell_in(piece_positions, &move);
+        while (get_next_legal_move(b, &move) && !flag_nomem) {
 
             /* make the move on a clone of the bitboard */
-            bclone = clone_bitboard(b);
-        
+            Bitboard *bb = clone_bitboard(b);
+            
             /* make move (we now have the to* fields filled) */
-            print_chessboard_move(bclone, ptr_move);
-            bitboard_do_move(bclone, ptr_move);
+            bitboard_do_move(bb, &move);
 
             /* save result of move evaluation */
-            scores[ms_idx] = evaluate_one_move(b, ptr_move);
-            evaluate_one_move(bclone, ptr_move);
-            if (scores[ms_idx] > scores[max_move_idx]) {
-                max_move_idx = ms_idx;
+            /* tree[next].score = evaluate_one_move(tree[next].b, &ptr_move); */
+            tree[next].b = bb;
+            tree[next].turn = turn;
+            
+            next++;
+            if (next >= max_moves_to_score) {
+                flag_nomem = 1;
             }
+        }
+    }
+    last = MIN(next - 1, max_moves_to_score);
+        
+    /* flip turn */
+    turn = (PIECE_COLOR_WHITE == turn) ? PIECE_COLOR_BLACK : PIECE_COLOR_WHITE;
 
-            /* 
-             * Now need to prepare for the next move from the same cell, hence:
-             *
-             * 1) save the old position that contains the from* fields 
-             * 2) increment to new position
-             * 3) copy old from* fields to the next move to try
-             */
-            ms_idx++;
-            if (ms_idx >= ENGINE_MAX_MOVES_TO_SCORE) {
-                ms_idx = 0;
-                max_hit = 1;
+    /* --- now score the roots iteratively --- */
+    while (first <= last) {
+    
+        unsigned long int c;
+        for (c=first; c<=last; c++) {
+
+            if (flag_nomem) {
+                tree[c].id_minchild = 0;
+                tree[c].id_maxchild = 0;
             }
-            moves[ms_idx].from_rank = ptr_move->from_rank;
-            moves[ms_idx].from_file = ptr_move->from_file;
-            ptr_move = &(moves[ms_idx]);
+            else {
+                tree[c].id_minchild = next;
+                piece_positions = (turn == PIECE_COLOR_WHITE) 
+                    ?  bitboard_get_white_positions(tree[c].b)
+                    :  bitboard_get_black_positions(tree[c].b);
 
-            /* restore bitboard for next move */
-            destroy_bitboard(bclone);
+                /* evaluate all legal moves */
+                while (piece_positions && !flag_nomem) {
+                    init_move(&move);
+                    piece_positions = get_next_cell_in(piece_positions, &move);
+
+                    Bitboard *parent_b = tree[c].b; 
+                    Bitboard *child_b;
+                
+                    reset_legal_move_iterator(parent_b);
+                    while (get_next_legal_move(parent_b, &move) && !flag_nomem) {
+                        child_b = clone_bitboard(parent_b);
+                        bitboard_do_move(child_b, &move);
+                        tree[next].id_parent = c;
+                        tree[next].b = child_b;
+                        tree[next].turn = turn;
+                        next++;
+                        
+                        if (next >= max_moves_to_score) {
+                            flag_nomem = 1;
+                        }
+                    }
+                }
+                tree[c].id_maxchild = next - 1;
+            }
+        }
+
+        /* should we process the next set of parents? */
+        if (flag_nomem) {
+            first = last + 1;
+        }
+        else {
+            first = last + 1;
+            last = next - 1;
+            printf("Processed chunk %ld - %ld\n", first, last);
+
+            /* flip turn */
+            turn = (PIECE_COLOR_WHITE == turn) ? PIECE_COLOR_BLACK : PIECE_COLOR_WHITE;
         }
     }
 
-    /* store the best move */
-    ptr_move_result->from_file = moves[max_move_idx].from_file;
-    ptr_move_result->to_file = moves[max_move_idx].to_file;
-    ptr_move_result->from_rank = moves[max_move_idx].from_rank;
-    ptr_move_result->to_rank = moves[max_move_idx].to_rank;
+    printf("Processed %ld total chunks\n", next);
 
-    free(moves);
+    // unsigned long int dd;
+    // for (dd=0; dd<next; dd++) {
+    //         char *turn = (tree[dd].turn == PIECE_COLOR_BLACK ) ? "black" : "white";
+    //         printf("Chess %ld  Turn: %s  Parent id: %ld\n", dd, turn, tree[dd].id_parent);
+    //         print_chessboard(tree[dd].b);
+    // }
 
     return 1;
 }
