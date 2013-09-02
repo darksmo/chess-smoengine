@@ -3,133 +3,182 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-double evaluate_one_move(Bitboard *b, Move *m) {
-    return (double) (rand() % 100);
-}
+#define INFINITY 999999.9f
 
-/* turn: 0 = black, 1 = white */
+// populate scores
+float _piece_score [] = {
+    // must reflect PieceType
+	100, // WHITE_PAWN, 
+	300, // WHITE_KNIGHT,
+	325, // WHITE_BISHOP,
+	500, // WHITE_ROOK,
+	900, // WHITE_QUEEN,
+	99999, // WHITE_KING,
+	100, // BLACK_PAWN,
+    300, // BLACK_KNIGHT,
+	325, // BLACK_BISHOP,
+	500, // BLACK_ROOK,
+	900, // BLACK_QUEEN,
+	99999, // BLACK_KING,
+    0, // PIECE_TYPE_COUNT,
+    0 // PIECE_NONE  
+};
 
-int get_best_move(Bitboard *b, Move *ptr_move_result, PieceColor turn) {
+float get_score_material_difference (Bitboard *b) {
+    // white material
+    float score_material_white = 0.0f;
+    U64 white_positions = bitboard_get_white_positions(b);
+    Move position;
+    PieceType piece_type;
+    while (white_positions) {
+        white_positions = get_next_cell_in(white_positions, &position);
+        piece_type = get_piece_type(b, position.from_file, position.from_rank);
+        score_material_white += _piece_score[piece_type];
+    }
     
-    /* in case we reach the maximum limit */
-    int flag_nomem = 0;
-
-    /* scored bitboard tree */
-    unsigned long int max_moves_to_score = ENGINE_MAX_MEMORY / (sizeof(Bitboard) + sizeof(EvalNode));
-    EvalNode *tree = malloc(sizeof(EvalNode) * max_moves_to_score);
-    printf("Attempting to score %ld moves\n", max_moves_to_score);
-    if (!tree) {
-        fprintf(stderr, "Error allocating memory for tree\n");
-        exit(1);
+    // black material
+    float score_material_black = 0.0f;
+    U64 black_positions = bitboard_get_black_positions(b);
+    while (black_positions) {
+        black_positions = get_next_cell_in(black_positions, &position);
+        piece_type = get_piece_type(b, position.from_file, position.from_rank);
+        score_material_black += _piece_score[piece_type];
     }
 
-    /* 
-     * Populate initial roots 
-     */
-    unsigned long int next = 0;
-    unsigned long int first = 0;
-    unsigned long int last = 0;
+    return score_material_white - score_material_black;
+}
+
+float evaluate_bitboard(Bitboard *b, PieceColor turn) {
+    float white_or_black = 1.0f; // white
+    if (turn == PIECE_COLOR_BLACK) {
+        white_or_black = -1.0f; // black
+    }
+
+    float score_material = get_score_material_difference(b) * white_or_black;
+
+    float score_piece_count = 
+        (float)(bitboard_get_white_count(b) - bitboard_get_black_count(b)) * white_or_black;
+    
+    float score_center_occupation = 
+        (float)(bitboard_get_white_center_count(b) - bitboard_get_black_center_count(b)) * white_or_black;
+
+    float score = 
+          (1.0f * score_material)
+        + (0.1f * score_piece_count)
+        + (0.5f * score_center_occupation)
+    ;
+
+    return score;
+}
+
+float evaluate_one_move(Bitboard *b, Move *m, PieceColor turn) {
+    Bitboard *bb = clone_bitboard(b);
+    bitboard_do_move(bb, m);
+
+    float score = evaluate_bitboard(b, turn);
+
+    destroy_bitboard(bb);
+
+    return score;
+}
+
+float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn) {
+    if ( depth == 0 ) return evaluate_one_move(b, m, turn);
+    float max = -INFINITY;
+
+   /*
+    * we need to understand what's the score after the current move
+    * ... so let's generate b1 = move(b)
+    */
+    Bitboard *b1 = clone_bitboard(b);
+    bitboard_do_move(b1, m);
+
+    // invert turn and get ready to move all pieces of the opposite color
+    PieceColor next_turn = PIECE_COLOR_BLACK;
+    if (turn == PIECE_COLOR_BLACK) {
+        next_turn = PIECE_COLOR_WHITE;
+    }
+
+    U64 piece_positions = (next_turn == PIECE_COLOR_WHITE) 
+        ?  bitboard_get_white_positions(b1)
+        :  bitboard_get_black_positions(b1);
+
+    while (piece_positions) {
+        Move next_move;
+        init_move(&next_move);
+        piece_positions = get_next_cell_in(piece_positions, &next_move);
+        reset_legal_move_iterator(b1);
+        while (get_next_legal_move(b1, &next_move)) {
+
+            // score the move with negaMax, but invert the resulting score
+            float score = -1 * negaMax(b1, &next_move, depth - 1, next_turn);
+
+            if (score > max || max == -INFINITY) {
+                max = score;
+            }
+        }
+    }
+
+    destroy_bitboard(b1);
+
+    return max;
+}
+
+float get_best_move(Bitboard *b, Move *ptr_move_result, 
+    PieceColor turn, void (*callback_best_move_found)(Move *))
+{
+    Move move;
 
     /* iterate through all moves of the current color */
+
+    // get piece positions
     U64 piece_positions = (turn == PIECE_COLOR_WHITE) 
         ?  bitboard_get_white_positions(b)
         :  bitboard_get_black_positions(b);
 
-    Move move;
-    while (piece_positions && !flag_nomem) {
+    // the resulting maximum gain
+    float max = -INFINITY;
+    int n_legal_moves = 0;
 
-        /* evaluate all legal moves */
+    // we assume pieces are on the chessboard basically
+    while (piece_positions) {
         init_move(&move);
         piece_positions = get_next_cell_in(piece_positions, &move);
-        while (get_next_legal_move(b, &move) && !flag_nomem) {
+        reset_legal_move_iterator(b);
+        while (get_next_legal_move(b, &move)) {
+            n_legal_moves++;
 
-            /* make the move on a clone of the bitboard */
-            Bitboard *bb = clone_bitboard(b);
-            
-            /* make move (we now have the to* fields filled) */
-            bitboard_do_move(bb, &move);
+            // move contains the next legal move for white
+            float score = negaMax(b, &move, 3, turn);
 
-            /* save result of move evaluation */
-            /* tree[next].score = evaluate_one_move(tree[next].b, &ptr_move); */
-            tree[next].b = bb;
-            tree[next].turn = turn;
-            
-            next++;
-            if (next >= max_moves_to_score) {
-                flag_nomem = 1;
-            }
-        }
-    }
-    last = MIN(next - 1, max_moves_to_score);
-        
-    /* flip turn */
-    turn = (PIECE_COLOR_WHITE == turn) ? PIECE_COLOR_BLACK : PIECE_COLOR_WHITE;
+            // keep the best next legal move according to negamax
+            if (max < score) {
+                max = score;
+                memcpy(ptr_move_result, &move, sizeof(Move));
 
-    /* --- now score the roots iteratively --- */
-    while (first <= last) {
-    
-        unsigned long int c;
-        for (c=first; c<=last; c++) {
-
-            if (flag_nomem) {
-                tree[c].id_minchild = 0;
-                tree[c].id_maxchild = 0;
-            }
-            else {
-                tree[c].id_minchild = next;
-                piece_positions = (turn == PIECE_COLOR_WHITE) 
-                    ?  bitboard_get_white_positions(tree[c].b)
-                    :  bitboard_get_black_positions(tree[c].b);
-
-                /* evaluate all legal moves */
-                while (piece_positions && !flag_nomem) {
-                    init_move(&move);
-                    piece_positions = get_next_cell_in(piece_positions, &move);
-
-                    Bitboard *parent_b = tree[c].b; 
-                    Bitboard *child_b;
-                
-                    reset_legal_move_iterator(parent_b);
-                    while (get_next_legal_move(parent_b, &move) && !flag_nomem) {
-                        child_b = clone_bitboard(parent_b);
-                        bitboard_do_move(child_b, &move);
-                        tree[next].id_parent = c;
-                        tree[next].b = child_b;
-                        tree[next].turn = turn;
-                        next++;
-                        
-                        if (next >= max_moves_to_score) {
-                            flag_nomem = 1;
-                        }
-                    }
+                if (callback_best_move_found != NULL) {
+                    callback_best_move_found(&move);
                 }
-                tree[c].id_maxchild = next - 1;
             }
-        }
-
-        /* should we process the next set of parents? */
-        if (flag_nomem) {
-            first = last + 1;
-        }
-        else {
-            first = last + 1;
-            last = next - 1;
-            printf("Processed chunk %ld - %ld\n", first, last);
-
-            /* flip turn */
-            turn = (PIECE_COLOR_WHITE == turn) ? PIECE_COLOR_BLACK : PIECE_COLOR_WHITE;
         }
     }
 
-    printf("Processed %ld total chunks\n", next);
+    // declare checkmate
+    if (!n_legal_moves) {
+        PieceType king_piece = (turn == PIECE_COLOR_WHITE) ?
+            WHITE_KING :
+            BLACK_KING;
+        U64 king_square = b->position[king_piece];
+        int cell = _cell_of_bit(king_square);
+        ptr_move_result->from_rank = _RANK(cell);
+        ptr_move_result->to_rank = _RANK(cell);
+        ptr_move_result->from_file = _FILE(cell);
+        ptr_move_result->to_file = _FILE(cell);
+        ptr_move_result->is_checkmate = 1;
+        return -INFINITY;
+    }
 
-    // unsigned long int dd;
-    // for (dd=0; dd<next; dd++) {
-    //         char *turn = (tree[dd].turn == PIECE_COLOR_BLACK ) ? "black" : "white";
-    //         printf("Chess %ld  Turn: %s  Parent id: %ld\n", dd, turn, tree[dd].id_parent);
-    //         print_chessboard(tree[dd].b);
-    // }
-
-    return 1;
+    return max;
 }

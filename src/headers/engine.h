@@ -12,16 +12,10 @@ typedef enum piece_color_t {
     PIECE_COLOR_BLACK
 } PieceColor;
 
-typedef struct {
-    Bitboard * b;
-    double score;
-    PieceColor turn;
-    unsigned long int id_parent;
-    unsigned long int id_minchild;
-    unsigned long int id_maxchild;
-} EvalNode;
+/* turn: 0 = black, 1 = white */
+float get_best_move(Bitboard *b, Move *ptr_move_result, 
+    PieceColor turn, void (*callback_best_move_found)(Move *));
 
-int get_best_move(Bitboard *b, Move *ptr_move_result, PieceColor turn);
-double evaluate_one_move(Bitboard *b, Move *m);
+float evaluate_one_move(Bitboard *b, Move *m, PieceColor turn);
 
 #endif
