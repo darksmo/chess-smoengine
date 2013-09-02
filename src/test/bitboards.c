@@ -198,7 +198,25 @@ static char *test_legal() {
     mu_assert("Knight moves ok 4", get_legal_moves(b, FILE_B, RANK_4) == 0x50800080500ULL); 
     mu_assert("Knight moves ok 5", get_legal_moves(b, FILE_B, RANK_8) == 0x8050000000000ULL);
     destroy_bitboard(b);
+
+    // special knight case
+    chessboard =
+    /* bit 56 */  "........" 
+    /* bit 48 */  "........"
+    /* bit 40 */  "........"
+    /* bit 32 */  "........"
+    /* bit 24 */  "........" 
+    /* bit 16 */  "......x."
+    /* bit  8 */  ".....x.." 
+    /* bit  0 */  ".......n";
+	b = create_bitboard((void *)chessboard, sizeof(char), &type_mapper, 0);
+    U64 legal_knight_moves = get_knight_attacks(b, FILE_H, RANK_1, b->position[BLACK_KNIGHT]);
+    printf("Knight legal moves\n");
+    print_bits(legal_knight_moves);
+    mu_assert("Knight special case moves 1 ok", legal_knight_moves == 0x402000ULL);
 	
+    destroy_bitboard(b);
+
     chessboard =
     /* bit 56 */  ".R......" 
     /* bit 48 */  ".r..Q..P"
@@ -334,7 +352,6 @@ static char *test_legal() {
 
     print_bitboard(b);
     print_chessboard(b);
-
     destroy_bitboard(b);
 
 
