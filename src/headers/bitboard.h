@@ -114,7 +114,7 @@ void print_bitboard(Bitboard *b);
 void print_chessboard(Bitboard *b);
 void print_chessboard_move(Bitboard *b, Move *m);
 void print_bits(U64 b);
-U64 get_attacks_to_square(Bitboard *b, FileType file, RankType rank, int is_opponent_white);
+U64 get_attacks_to_square(Bitboard *b, FileType file, RankType rank);
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank);
 void reset_legal_move_iterator(Bitboard *b);
 

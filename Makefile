@@ -10,10 +10,10 @@ linux: clean tests liblinux
 tests: test_bitboards test_bitutils test_engine parse_game
 
 test_bitboards: clean
-	$(CC) src/test/bitboards.c src/*.c $(LDFLAGS) -o ./build/test_bitboards
+	$(CC) -g src/test/bitboards.c src/*.c $(LDFLAGS) -o ./build/test_bitboards
 
 test_bitutils: clean
-	$(CC) src/test/bitutils.c src/*.c $(LDFLAGS) -o ./build/test_bitutils
+	$(CC) -g src/test/bitutils.c src/*.c $(LDFLAGS) -o ./build/test_bitutils
 
 test_engine: clean
 	$(CC) -g src/test/engine.c src/*.c $(LDFLAGS) -o ./build/test_engine

@@ -96,7 +96,7 @@ int do_move(Move *m)
     print_chessboard_move(chessboard, m);
     printf("The current chessboard looks like:\n");
     print_chessboard(chessboard);
-    print_bitboard(chessboard);
+    // print_bitboard(chessboard);
     return 0;
 }
 

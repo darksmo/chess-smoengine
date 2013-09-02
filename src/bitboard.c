@@ -352,7 +352,7 @@ U64 get_knight_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos)
        | (pclip_b & pclip_a) << 6
        | (pclip_g & pclip_h) << 10
        | (pclip_a) << 15
-       | (piece_pos) << 17;
+       | (pclip_h) << 17;
 }
 U64 get_black_king_attacks (Bitboard *b, FileType file, RankType rank, U64 piece_pos) {
     U64 pclip_a = piece_pos & _clear_file(FILE_A);
@@ -380,7 +380,7 @@ U64 get_white_king_attacks (Bitboard *b, FileType file, RankType rank, U64 piece
        | (piece_pos >> 8)
        | b->white_castling_rights;
 }
-U64 get_black_pawn_attacks (Bitboard *b, FileType file, RankType rank, U64 piece_pos) {
+U64 get_black_pawn_attacks (Bitboard *b, FileType file, RankType rank, U64 piece_pos, int attacks_only) {
     U64 pclip_a = piece_pos & _clear_file(FILE_A);
     U64 pclip_h = piece_pos & _clear_file(FILE_H);
 
@@ -388,6 +388,10 @@ U64 get_black_pawn_attacks (Bitboard *b, FileType file, RankType rank, U64 piece
     U64 piece_along_the_longstep = (bitboard_get_all_positions(b) & _mask_cell(file, rank-1));
     U64 pawn_attacks_mask = (pclip_h >> 7) | (pclip_a >> 9);
     pawn_attacks_mask &= (bitboard_get_white_positions(b) | b->enpassant_rights); 
+    
+    if (attacks_only) {
+        return pawn_attacks_mask;
+    }
     
     /* pawn movements */
     U64 result =
@@ -400,7 +404,7 @@ U64 get_black_pawn_attacks (Bitboard *b, FileType file, RankType rank, U64 piece
 
     return result | pawn_attacks_mask;
 }
-U64 get_white_pawn_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) {
+U64 get_white_pawn_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos, int attacks_only) {
     U64 pclip_a = piece_pos & _clear_file(FILE_A);
     U64 pclip_h = piece_pos & _clear_file(FILE_H);
 
@@ -408,6 +412,10 @@ U64 get_white_pawn_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_
     U64 piece_along_the_longstep = (bitboard_get_all_positions(b) & _mask_cell(file, rank+1));
     U64 pawn_attacks_mask = (pclip_a << 7) | (pclip_h << 9);
     pawn_attacks_mask &= (bitboard_get_black_positions(b) | b->enpassant_rights);
+
+    if (attacks_only) {
+        return pawn_attacks_mask;
+    }
     
     /* pawn movements */
     U64 result =
@@ -425,7 +433,7 @@ U64 get_queen_attacks(Bitboard *b, FileType file, RankType rank, U64 piece_pos) 
         | get_rook_attacks(b, file, rank, piece_pos);
 }
 
-U64 get_attacks_to_square(Bitboard *b, FileType file, RankType rank, int is_opponent_white) 
+U64 get_attacks_to_square(Bitboard *b, FileType file, RankType rank) 
 {
        U64 piece_pos = _mask_cell(file, rank);
        U64 knights, kings, bishops_queens, rooks_queens;
@@ -437,15 +445,17 @@ U64 get_attacks_to_square(Bitboard *b, FileType file, RankType rank, int is_oppo
 
        rooks_queens |= b->position[WHITE_ROOK] | b->position[BLACK_ROOK];
        bishops_queens  |= b->position[WHITE_BISHOP] | b->position[BLACK_BISHOP];
-     
-       return (get_white_pawn_attacks(b, file, rank, piece_pos) & b->position[WHITE_PAWN])
-            | (get_black_pawn_attacks(b, file, rank, piece_pos) & b->position[WHITE_PAWN])
+
+       U64 result = (get_white_pawn_attacks(b, file, rank, piece_pos, 1) & b->position[BLACK_PAWN])
+            | (get_black_pawn_attacks(b, file, rank, piece_pos, 1) & b->position[WHITE_PAWN])
             | (get_knight_attacks(b, file, rank, piece_pos) & knights)
             | ( (get_black_king_attacks(b, file, rank, piece_pos)
-                | get_white_king_attacks(b, file, rank, piece_pos)) & kings)
+            | get_white_king_attacks(b, file, rank, piece_pos)) & kings)
             | (get_bishop_attacks(b, file, rank, piece_pos) & bishops_queens)
             | (get_rook_attacks(b, file, rank, piece_pos) & rooks_queens)
        ;
+
+       return result;
 }
 
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank) 
@@ -459,35 +469,12 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
     U64 black_piece_positions = bitboard_get_black_positions(b);
     int is_white_piece = !!(piece_pos & white_piece_positions);
 
-    /*
-     * if this piece didn't exist and king is in check then this piece cannot
-     * move. So we remove the piece temporarily from the chessboard and see.
-     */
-    PieceType king_type = is_white_piece ? WHITE_KING : BLACK_KING;
-    int king_cell = _cell_of_bit(b->position[king_type]);
-
-    // check if the king is currently checked (a priori)
-    U64 king_attacked_priori = 
-        get_attacks_to_square(b, _FILE(king_cell), _RANK(king_cell), !is_white_piece)
-            & ( is_white_piece ? ~white_piece_positions
-                               : ~black_piece_positions
-            );
-
-    // check if the king is attacked after removing the piece
-    b->position[t] &= ~piece_pos; // remove piece
-    U64 king_attacked_posteriori = 
-        get_attacks_to_square(b, _FILE(king_cell), _RANK(king_cell), !is_white_piece)
-            & (is_white_piece ? ~white_piece_positions
-                              : ~black_piece_positions
-            );
-    b->position[t] |= piece_pos; // put piece back
-
     switch (t) {
         case WHITE_PAWN:
-            result = get_white_pawn_attacks(b, file, rank, piece_pos);
+            result = get_white_pawn_attacks(b, file, rank, piece_pos, 0);
             break;
         case BLACK_PAWN:
-            result = get_black_pawn_attacks(b, file, rank, piece_pos);
+            result = get_black_pawn_attacks(b, file, rank, piece_pos, 0);
             break;
         case WHITE_KING:
             result = get_white_king_attacks(b, file, rank, piece_pos);
@@ -518,6 +505,37 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
         result &= ~white_piece_positions;
     else
         result &= ~black_piece_positions;
+    
+    /*
+     * Handle king being checked if piece moves. If king exists on the
+     * chessboard, determine whether it is attached a priori or a
+     * posteriori (after the piece moves).
+     */
+    PieceType king_type = is_white_piece ? WHITE_KING : BLACK_KING;
+    U64 king_attacked_priori = 0x0ULL;
+    U64 king_attacked_posteriori = 0x0ULL;
+    U64 king_position;
+    int king_cell = 99; // out of range on purpose
+    if (king_position = b->position[king_type]) { // king exists
+        king_cell = _cell_of_bit(king_position);
+
+        // check if the king is currently checked (a priori)
+        king_attacked_priori = 
+            get_attacks_to_square(b, _FILE(king_cell), _RANK(king_cell))
+                & ( is_white_piece ? ~white_piece_positions
+                                   : ~black_piece_positions
+                );
+
+        // check if the king is attacked after removing the piece
+        b->position[t] &= ~piece_pos; // remove piece
+        king_attacked_posteriori = 
+            get_attacks_to_square(b, _FILE(king_cell), _RANK(king_cell))
+                & (is_white_piece ? ~white_piece_positions
+                                  : ~black_piece_positions
+                );
+        b->position[t] |= piece_pos; // put piece back
+    }
+
 
     /*
      * King Special case: we need to remove squares in which the king would be in check...
@@ -529,9 +547,10 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
         b->position[t] &= ~piece_pos; // remove piece
         while (result) {
             result = get_next_cell_in(result, &m);
-            if (get_attacks_to_square(b, m.from_file, m.from_rank, !is_white_piece) 
-                & (is_white_piece ? ~white_piece_positions : ~black_piece_positions)
-            ) {
+            U64 attackers = get_attacks_to_square(b, m.from_file, m.from_rank) 
+                & (is_white_piece ? ~white_piece_positions : ~black_piece_positions);
+
+            if (attackers) {
                 // remove cell
                 actual_moves &= ~_mask_cell(m.from_file, m.from_rank);
             }
@@ -552,33 +571,45 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
          * OR legal moves of another piece (one attackers to king)
          */
         Move m;
-        int m_cell;
+        int king_attacked_from_cell;
+        U64 king_attacked_from_cell_mask;
         U64 inbetween_attacks = 0x0ULL;
         while (king_attacked_priori) { 
             king_attacked_priori = get_next_cell_in(king_attacked_priori, &m);
-            m_cell = _CELL(m.from_rank, m.from_file);
+
+            king_attacked_from_cell = _CELL(m.from_rank, m.from_file);
+            king_attacked_from_cell_mask = _mask_cell(m.from_file, m.from_rank);
             inbetween_attacks |= 
-                _mask_between(m_cell, king_cell) 
-                | _mask_cell(m.from_file, m.from_rank);
+                _mask_between(king_attacked_from_cell, king_cell) 
+                | king_attacked_from_cell_mask;
+
+            /*
+             * Special case for en-passant check removal.
+             * In this case the attacker is a pawn, and the current
+             * piece is a pawn that moves into the diagonal square
+             * behind the attacking pawn.
+             */
+            PieceType opponent_pawn_type = is_white_piece 
+                ? BLACK_PAWN 
+                : WHITE_PAWN;
+
+            // Check whether king is attacked from a pawn of the
+            // opposite color
+            U64 opponent_pawn_cell_mask = b->position[opponent_pawn_type] 
+                & king_attacked_from_cell_mask;
+
+            if (opponent_pawn_cell_mask) {
+                // We now get the cell behind the pawn (based on color)
+                // and add it to the cells in which the current pawn can
+                // move.
+                if (is_white_piece) {
+                    inbetween_attacks |= (opponent_pawn_cell_mask << 8);
+                }
+                else {
+                    inbetween_attacks |= (opponent_pawn_cell_mask >> 8);
+                }
+            }
         }
-
-        // king must escape
-        // if (t == king_type) { 
-        //     U64 potential_moves = result 
-        //         & (~inbetween_attacks | _mask_cell(m.from_file, m.from_rank)); 
-
-        //     // from the potental moves will need to remove those in which the king would be in check
-        //     U64 actual_moves = potential_moves;
-        //     while (potential_moves) {
-        //         potential_moves = get_next_cell_in(potential_moves, &m);
-        //         if (get_attacks_to_square(b, m.from_file, m.from_rank, !is_white_piece) 
-        //             & (is_white_piece ? ~white_piece_positions : ~bitboard_get_black_positions(b))
-        //         ) {
-        //             actual_moves &= ~_mask_cell(m.from_file, m.from_rank);
-        //         }
-        //     }
-        //     return actual_moves;
-        // }
 
         // a piece other than the king must cover the attack
         return result & inbetween_attacks;
@@ -588,9 +619,36 @@ U64 get_legal_moves(Bitboard *b, FileType file, RankType rank)
      * Special case of king attacked a posteriori
      */
     if (king_attacked_posteriori) {
-        // this piece just can't move!
-        return 0x0ULL;
+        int n_attackers = _count_bits(king_attacked_posteriori);
+        if (t != king_type && n_attackers > 1) { return 0x0ULL; }
+
+        /*
+         * legal moves of the king (many attackers to king)
+         * OR legal moves of another piece (one attackers to king)
+         */
+        Move m;
+        int m_cell;
+        U64 inbetween_attacks = 0x0ULL;
+        while (king_attacked_posteriori) { 
+            king_attacked_posteriori = get_next_cell_in(king_attacked_posteriori, &m);
+            m_cell = _CELL(m.from_rank, m.from_file);
+            inbetween_attacks |= 
+                _mask_between(m_cell, king_cell) 
+                | _mask_cell(m.from_file, m.from_rank);
+        }
+
+        // a piece other than the king must cover the attack
+        return result & inbetween_attacks;
     }
+    // if (king_attacked_posteriori) {
+    //     int n_attackers = _count_bits(king_attacked_posteriori);
+    //     // with two attackers to the king, the piece can't move!
+    //     if (n_attackers > 1) { return 0x0ULL; }
+    //     
+    //     // one attacker: the piece can only move on top of the attacking
+    //     // piece.
+    //     return result & king_attacked_posteriori;
+    // }
 
     return result;
 }
