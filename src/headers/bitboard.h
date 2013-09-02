@@ -14,6 +14,7 @@
 #define MASK_WHITE_KING_LEFT_CASTLE 0x4ULL
 #define MASK_BLACK_KING_RIGHT_CASTLE 0x4000000000000000ULL
 #define MASK_BLACK_KING_LEFT_CASTLE 0x400000000000000ULL
+#define MASK_CENTER_4SQ 0x1818000000ULL
 
 typedef enum file_type_t {
     FILE_A,
@@ -37,6 +38,7 @@ typedef enum rank_type_t {
     RANK_8,
 } RankType;
 
+// if you modify this, you'll have to modify engine.c : _piece_score.
 typedef enum piece_type_t {
 	WHITE_PAWN, 
 	WHITE_KNIGHT,
@@ -60,6 +62,7 @@ typedef struct {
     FileType to_file;
     RankType to_rank;
     PieceType promote_to;
+    int is_checkmate;
     const char* as_string;
 } Move;
 
@@ -97,13 +100,21 @@ int is_legal_move(Bitboard *b, Move *m);
 void bitboard_do_move(Bitboard *b, Move *m);
 U64 bitboard_get_white_positions(Bitboard *b);
 U64 bitboard_get_black_positions(Bitboard *b);
+int bitboard_get_white_count(Bitboard *b);
+int bitboard_get_black_count(Bitboard *b);
+int bitboard_get_white_center_count(Bitboard *b);
+int bitboard_get_black_center_count(Bitboard *b);
 U64 bitboard_get_all_positions(Bitboard *b);
 
 char *bitboard_piece_name(PieceType t);
+
+void print_move(Move *m);
+void print_move_fmt(Move *m, const char *fmt);
 void print_bitboard(Bitboard *b);
 void print_chessboard(Bitboard *b);
 void print_chessboard_move(Bitboard *b, Move *m);
 void print_bits(U64 b);
+U64 get_attacks_to_square(Bitboard *b, FileType file, RankType rank, int is_opponent_white);
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank);
 void reset_legal_move_iterator(Bitboard *b);
 
