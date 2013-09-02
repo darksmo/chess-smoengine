@@ -29,6 +29,11 @@ U64 _mask_diag(unsigned int n);
 U64 _mask_antidiag(unsigned int n);
 
 /*
+ * Returns the number of bits set to 1 in the give 64 bit integer.
+ */
+int _count_bits(U64 bit);
+
+/*
  * Given a 64bit integer and a count, returns the position of the most
  * significant bit found.
  */

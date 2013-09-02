@@ -1,5 +1,10 @@
 #include "bitutils.h"
 
+const U64 k1 = (0x5555555555555555); /*  -1/3   */
+const U64 k2 = (0x3333333333333333); /*  -1/5   */
+const U64 k4 = (0x0f0f0f0f0f0f0f0f); /*  -1/17  */
+const U64 kf = (0x0101010101010101); /*  -1/255 */
+
 U64 _antidiag_masks[] = {
  /* 0 */   0x102040810204080ULL,
  /* 1 */   0x1020408102040ULL,
@@ -95,4 +100,11 @@ int _cell_of_bit(U64 bit) {
         cell_of_next_move++;
     }
     return cell_of_next_move;
+}
+int _count_bits(U64 bit) {
+    bit =  bit       - ((bit >> 1)  & k1); /* put count of each 2 bits into those 2 bits */
+    bit = (bit & k2) + ((bit >> 2)  & k2); /* put count of each 4 bits into those 4 bits */
+    bit = (bit       +  (bit >> 4)) & k4 ; /* put count of each 8 bits into those 8 bits */
+    bit = (bit * kf) >> 56; /* returns 8 most significant bits of bit + (bit<<8) + (bit<<16) + (bit<<24) + ...  */
+    return (int) bit;
 }
