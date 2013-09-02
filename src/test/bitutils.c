@@ -3,6 +3,7 @@
 #include "minunit.h"
 
 #include "bitutils.h"
+#include "bitboard.h"
 
 
 int tests_run = 0;
@@ -13,9 +14,21 @@ static char *test_cell_of_bit() {
     return 0;
 }
 
+static char *test_mask_between() {
+    mu_assert("diagonal between cells 7 and 56", _mask_between(7, 56) == 0x2040810204000ULL);
+    mu_assert("diagonal between cells 56 and 7", _mask_between(56, 7) == 0x2040810204000ULL);
+    mu_assert("diagonal between cells 40 and 47", _mask_between(40, 47) == 0x7E0000000000ULL);
+    mu_assert("diagonal between cells 41 and 33", _mask_between(41, 33) == 0x0ULL);
+    mu_assert("diagonal between cells 33 and 41", _mask_between(33, 41) == 0x0ULL);
+    mu_assert("diagonal between cells 26 and 2", _mask_between(26, 2) == 0x40400ULL);
+    mu_assert("diagonal between cells 2 and 26", _mask_between(2, 26) == 0x40400ULL);
+    return 0;
+}
+
 
 static char *all_tests() {
     mu_run_test(test_cell_of_bit);
+    mu_run_test(test_mask_between);
     return 0;
 }
 
