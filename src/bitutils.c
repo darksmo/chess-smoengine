@@ -101,6 +101,42 @@ int _cell_of_bit(U64 bit) {
     }
     return cell_of_next_move;
 }
+
+U64 _cache_mask_between[64][64];
+int _was_cache_mask_between_initialized = 0;
+U64 _mask_between(unsigned int n1, unsigned int n2) {
+    if (!_was_cache_mask_between_initialized) {
+        // populate cache
+        int i, k;
+        U64 result;
+        int dx, dy;
+        for (i=0; i<64; i++) {
+            for (k=0; k<64; k++) {
+                int x1 = _FILE(i);
+                int y1 = _RANK(i);
+                int x2 = _FILE(k);
+                int y2 = _RANK(k);
+                result = 0ULL;
+                while ((x1 != x2) || (y1 != y2)) {
+                    dx = x2 - x1;
+                    dy = y2 - y1;
+                    if (dx) {
+                        x1 += (dx > 0) ? 1 : -1;
+                    }
+                    if (dy) {
+                        y1 += (dy > 0) ? 1 : -1;
+                    }
+                    result |= _mask_cell(x1, y1);
+                }
+                result &= ~_mask_cell(x2, y2);
+                _cache_mask_between[i][k] = result;
+            }
+        }
+        _was_cache_mask_between_initialized = 1;
+    }
+    return _cache_mask_between[n1][n2];
+}
+
 int _count_bits(U64 bit) {
     bit =  bit       - ((bit >> 1)  & k1); /* put count of each 2 bits into those 2 bits */
     bit = (bit & k2) + ((bit >> 2)  & k2); /* put count of each 4 bits into those 4 bits */

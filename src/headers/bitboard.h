@@ -3,11 +3,6 @@
 
 #include "bitutils.h"
 
-#define DIAGONAL(r,f) ((r-f) & 15)
-#define ANTI_DIAGONAL(r,f) ((r+f) ^ 7)
-#define _CELL(r,f) (r * 8 + f)
-#define _RANK(c) (c >> 3)
-#define _FILE(c) (c & 7)
 #define _CELL_WHITE_KING_HOME 4
 #define _CELL_BLACK_KING_HOME 60
 #define _CELL_WHITE_KING_LEFTCASTLE 2

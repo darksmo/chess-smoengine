@@ -1,6 +1,12 @@
 #ifndef BITUTILS_h
 #define BITUTILS_h
 
+#define DIAGONAL(r,f) ((r-f) & 15)
+#define ANTI_DIAGONAL(r,f) ((r+f) ^ 7)
+#define _CELL(r,f) (r * 8 + f)
+#define _RANK(c) (c >> 3)
+#define _FILE(c) (c & 7)
+
 /* 
  * Adapted from: 
  * https://blogs.oracle.com/DanX/entry/optimizing_byte_swapping_for_fun
@@ -27,6 +33,8 @@ U64 _mirror(U64 bit);
 
 U64 _mask_diag(unsigned int n);
 U64 _mask_antidiag(unsigned int n);
+
+U64 _mask_between(unsigned int n1, unsigned int n2);
 
 /*
  * Returns the number of bits set to 1 in the give 64 bit integer.
