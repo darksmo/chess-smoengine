@@ -458,6 +458,14 @@ U64 get_attacks_to_square(Bitboard *b, FileType file, RankType rank)
        return result;
 }
 
+U64 bitboard_get_center_attackers(Bitboard *b) {
+    return get_attacks_to_square(b, FILE_D, RANK_4)
+        | get_attacks_to_square(b, FILE_D, RANK_5)
+        | get_attacks_to_square(b, FILE_E, RANK_4)
+        | get_attacks_to_square(b, FILE_E, RANK_5);
+}
+
+
 U64 get_legal_moves(Bitboard *b, FileType file, RankType rank) 
 {
     PieceType t = get_piece_type(b, file, rank);

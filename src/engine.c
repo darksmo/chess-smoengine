@@ -6,6 +6,7 @@
 #include <string.h>
 
 #define INFINITY 999999.9f
+#define DEPTH 4
 
 // populate scores
 float _piece_score [] = {
@@ -64,10 +65,17 @@ float evaluate_bitboard(Bitboard *b, PieceColor turn) {
     float score_center_occupation = 
         (float)(bitboard_get_white_center_count(b) - bitboard_get_black_center_count(b)) * white_or_black;
 
+    U64 center_attackers = bitboard_get_center_attackers(b);
+    int n_white_attackers = center_attackers & ~bitboard_get_black_positions(b);
+    int n_black_attackers = center_attackers & ~bitboard_get_white_positions(b);
+    float score_center_attackers =
+        (float)(n_white_attackers - n_black_attackers) * white_or_black;
+
     float score = 
-          (1.0f * score_material)
+          (0.9f * score_material);
         + (0.1f * score_piece_count)
-        + (0.5f * score_center_occupation)
+        + (0.2f * score_center_occupation)
+        + (0.6f * score_center_attackers)
     ;
 
     return score;
@@ -77,7 +85,7 @@ float evaluate_one_move(Bitboard *b, Move *m, PieceColor turn) {
     Bitboard *bb = clone_bitboard(b);
     bitboard_do_move(bb, m);
 
-    float score = evaluate_bitboard(b, turn);
+    float score = evaluate_bitboard(bb, turn);
 
     destroy_bitboard(bb);
 
@@ -85,7 +93,9 @@ float evaluate_one_move(Bitboard *b, Move *m, PieceColor turn) {
 }
 
 float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn) {
-    if ( depth == 0 ) return evaluate_one_move(b, m, turn);
+    if ( depth == 0 ) { 
+        return evaluate_one_move(b, m, turn);
+    }
     float max = -INFINITY;
 
    /*
@@ -96,18 +106,17 @@ float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn) {
     bitboard_do_move(b1, m);
 
     // invert turn and get ready to move all pieces of the opposite color
-    PieceColor next_turn = PIECE_COLOR_BLACK;
-    if (turn == PIECE_COLOR_BLACK) {
-        next_turn = PIECE_COLOR_WHITE;
-    }
+    PieceColor next_turn = (turn == PIECE_COLOR_BLACK) 
+        ? PIECE_COLOR_WHITE
+        : PIECE_COLOR_BLACK;
 
     U64 piece_positions = (next_turn == PIECE_COLOR_WHITE) 
         ?  bitboard_get_white_positions(b1)
         :  bitboard_get_black_positions(b1);
 
+    Move next_move;
+    init_move(&next_move);
     while (piece_positions) {
-        Move next_move;
-        init_move(&next_move);
         piece_positions = get_next_cell_in(piece_positions, &next_move);
         reset_legal_move_iterator(b1);
         while (get_next_legal_move(b1, &next_move)) {
@@ -115,7 +124,7 @@ float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn) {
             // score the move with negaMax, but invert the resulting score
             float score = -1 * negaMax(b1, &next_move, depth - 1, next_turn);
 
-            if (score > max || max == -INFINITY) {
+            if (score > max || score == -INFINITY) {
                 max = score;
             }
         }
@@ -151,7 +160,7 @@ float get_best_move(Bitboard *b, Move *ptr_move_result,
             n_legal_moves++;
 
             // move contains the next legal move for white
-            float score = negaMax(b, &move, 3, turn);
+            float score = negaMax(b, &move, DEPTH - 1, turn);
 
             // keep the best next legal move according to negamax
             if (max < score) {
