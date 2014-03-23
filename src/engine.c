@@ -55,6 +55,9 @@ float get_score_material_difference (Bitboard *b) {
     return score_material_white - score_material_black;
 }
 
+/*
+ * Return negative score if the player of turn is losing...
+ */
 float evaluate_bitboard(Bitboard *b, PieceColor turn) {
     float white_or_black = 1.0f; // white
     if (turn == PIECE_COLOR_BLACK) {
