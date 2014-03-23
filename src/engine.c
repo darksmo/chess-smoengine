@@ -93,10 +93,12 @@ float evaluate_one_move(Bitboard *b, Move *m, PieceColor turn) {
     return score;
 }
 
-float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn) {
+float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn, float alpha, float beta, Move move_history[]) {
     if ( depth == 0 ) { 
         return evaluate_one_move(b, m, turn);
     }
+
+
     float max = -INFINITY;
 
    /*
@@ -123,17 +125,22 @@ float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn) {
         while (get_next_legal_move(b1, &next_move)) {
 
             // score the move with negaMax, but invert the resulting score
-            float score = -1 * negaMax(b1, &next_move, depth - 1, next_turn);
+            float score = -1 * negaMax(b1, &next_move, depth - 1, next_turn, -beta, -alpha, move_history);
 
-            if (score > max || score == -INFINITY) {
-                max = score;
+            if (score > alpha) {
+                alpha = score;
+            }
+
+            if (beta <= alpha) {
+                destroy_bitboard(b1);
+                return alpha;
             }
         }
     }
 
-    destroy_bitboard(b1);
 
-    return max;
+    destroy_bitboard(b1);
+    return alpha;
 }
 
 float get_best_move(Bitboard *b, Move *ptr_move_result, 
@@ -152,6 +159,8 @@ float get_best_move(Bitboard *b, Move *ptr_move_result,
     float max = -INFINITY;
     int n_legal_moves = 0;
 
+    Move move_history[DEPTH];
+
     // we assume pieces are on the chessboard basically
     while (piece_positions) {
         init_move(&move);
@@ -161,7 +170,7 @@ float get_best_move(Bitboard *b, Move *ptr_move_result,
             n_legal_moves++;
 
             // move contains the next legal move for white
-            float score = negaMax(b, &move, DEPTH - 1, turn);
+            float score = negaMax(b, &move, DEPTH - 1, turn, -INFINITY-1, INFINITY+1, move_history);
 
             // keep the best next legal move according to negamax
             if (max < score) {
