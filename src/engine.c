@@ -7,6 +7,7 @@
 
 #define INFINITY 999999.9f
 #define DEPTH 4
+#define NBITS_IN_INT sizeof(int) * 8
 
 // populate scores
 float _piece_score [] = {
@@ -146,6 +147,7 @@ float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn, float alpha, flo
 float get_best_move(Bitboard *b, Move *ptr_move_result, 
     PieceColor turn, void (*callback_best_move_found)(Move *))
 {
+    int should_assign_max;
     Move move;
 
     /* iterate through all moves of the current color */
@@ -171,6 +173,19 @@ float get_best_move(Bitboard *b, Move *ptr_move_result,
 
             // move contains the next legal move for white
             float score = negaMax(b, &move, DEPTH - 1, turn, -INFINITY-1, INFINITY+1, move_history);
+
+            // if score is equal we decide randomly whether to assign best move
+            if (max == score) {
+                // check if odd/even
+                should_assign_max = (
+                    ((unsigned int) rand() << NBITS_IN_INT - 1
+                ) >> NBITS_IN_INT - 1) ;
+
+                // trigger max assignment
+                if (should_assign_max) {
+                    max = score - 1;
+                }
+            }
 
             // keep the best next legal move according to negamax
             if (max < score) {
