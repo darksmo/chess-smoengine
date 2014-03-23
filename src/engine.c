@@ -6,7 +6,8 @@
 #include <string.h>
 
 #define INFINITY 999999.9f
-#define DEPTH 4
+#define DEPTH 7
+
 #define NBITS_IN_INT sizeof(int) * 8
 
 #define NDEBUG
