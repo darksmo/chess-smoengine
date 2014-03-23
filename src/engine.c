@@ -9,6 +9,8 @@
 #define DEPTH 4
 #define NBITS_IN_INT sizeof(int) * 8
 
+#define NDEBUG
+
 // populate scores
 float _piece_score [] = {
     // must reflect PieceType
@@ -125,11 +127,25 @@ float negaMax(Bitboard *b, Move *m, int depth, PieceColor turn, float alpha, flo
         reset_legal_move_iterator(b1);
         while (get_next_legal_move(b1, &next_move)) {
 
+#ifndef NDEBUG
+            memcpy(&(move_history[DEPTH - depth]), &next_move, sizeof(Move));
+#endif
+
             // score the move with negaMax, but invert the resulting score
             float score = -1 * negaMax(b1, &next_move, depth - 1, next_turn, -beta, -alpha, move_history);
 
             if (score > alpha) {
                 alpha = score;
+
+#ifndef NDEBUG
+                if (depth == 1) {
+                    int i;
+                    for (i=0; i < DEPTH; i++) {
+                        print_move_fmt(&(move_history[i]), "[%c%c -> %c%c] ");
+                    }
+                    printf("%f\n", score);
+                }
+#endif
             }
 
             if (beta <= alpha) {
@@ -171,6 +187,10 @@ float get_best_move(Bitboard *b, Move *ptr_move_result,
         while (get_next_legal_move(b, &move)) {
             n_legal_moves++;
 
+#ifndef NDEBUG
+            memcpy(&(move_history[0]), &move, sizeof(Move));
+#endif
+
             // move contains the next legal move for white
             float score = negaMax(b, &move, DEPTH - 1, turn, -INFINITY-1, INFINITY+1, move_history);
 
@@ -190,6 +210,12 @@ float get_best_move(Bitboard *b, Move *ptr_move_result,
             // keep the best next legal move according to negamax
             if (max < score) {
                 max = score;
+
+#ifndef NDEBUG
+                print_move_fmt(&move, "Best: [%c%c -> %c%c]");
+                printf(" Score: %f\n", max);
+#endif
+
                 memcpy(ptr_move_result, &move, sizeof(Move));
 
                 if (callback_best_move_found != NULL) {
