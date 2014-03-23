@@ -68,11 +68,12 @@ float evaluate_bitboard(Bitboard *b, PieceColor turn) {
     U64 center_attackers = bitboard_get_center_attackers(b);
     int n_white_attackers = center_attackers & ~bitboard_get_black_positions(b);
     int n_black_attackers = center_attackers & ~bitboard_get_white_positions(b);
+
     float score_center_attackers =
         (float)(n_white_attackers - n_black_attackers) * white_or_black;
 
     float score = 
-          (0.9f * score_material);
+          (0.9f * score_material)
         + (0.1f * score_piece_count)
         + (0.2f * score_center_occupation)
         + (0.6f * score_center_attackers)
