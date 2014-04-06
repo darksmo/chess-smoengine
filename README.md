@@ -41,3 +41,7 @@ Plan:
 
 - special moves:
  * promotion
+
+
+[![githalytics.com alpha](https://cruel-carlota.pagodabox.com/8827b3c64924747efec9621875b6e26d "githalytics.com")](http://githalytics.com/darksmo/chess-smoengine)
+
